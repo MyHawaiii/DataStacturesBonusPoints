@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dijkstra's Algorithm Visualizer</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Cytoscape.js for Graph Rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
 </head>
+
 <body>
     <nav class="top-nav">
         <div class="nav-brand">Dijkstra Viz</div>
@@ -15,28 +16,104 @@
             <button class="nav-btn active" data-target="page-custom">Build Custom Graph</button>
             <button class="nav-btn" data-target="page-random">Random Graph</button>
             <button class="nav-btn" data-target="page-animate">Animation Player</button>
+            <button class="nav-btn" data-target="page-quiz">Quiz Mode</button>
             <button class="nav-btn" data-target="page-learn">Learn Algorithm</button>
         </div>
     </nav>
 
-    <!-- Floating Draggable Table -->
     <div id="floating-table" class="floating-table hidden">
         <div class="table-header" id="floating-table-header">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            Distances Table
+            <div style="display:flex; align-items:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h18v18H3z" />
+                    <path d="M3 9h18" />
+                    <path d="M9 21V9" />
+                </svg>
+                Distances Table
+            </div>
+            <button class="close-float-btn" id="close-table-btn">&times;</button>
         </div>
         <div class="table-content" id="floating-table-content"></div>
     </div>
 
-    <!-- Error/Warning Toasts -->
+    <div id="floating-heap" class="floating-table hidden" style="right: 420px; width: auto; max-width: 600px;">
+        <div class="table-header" id="floating-heap-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 22h20L12 2z" />
+                </svg>
+                Min-Heap Tree
+            </div>
+            <button class="close-float-btn" id="close-heap-btn">&times;</button>
+        </div>
+        <div class="table-content" id="floating-heap-content" style="overflow-x: auto; background: var(--bg-color);">
+        </div>
+    </div>
+
+    <div id="floating-code" class="floating-table hidden"
+        style="right: auto; left: 320px; width: 380px; z-index: 1000;">
+        <div class="table-header" id="floating-code-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Formal Pseudocode
+            </div>
+            <button class="close-float-btn" id="close-code-btn">&times;</button>
+        </div>
+        <div class="table-content" id="floating-code-content"
+            style="background: #1e293b; color: #f8fafc; padding: 15px; font-family: monospace; font-size: 0.95rem; line-height: 1.6;">
+            <div id="code-line-1" class="code-line">1) d(s) = 0, d(v) = &infin; for all v &ne; s. T = V.</div>
+            <div id="code-line-2" class="code-line">2) while T is not empty:</div>
+            <div id="code-line-3" class="code-line" style="padding-left: 15px;">3) u = arg min { d(v) | v &isin; T }
+            </div>
+            <div id="code-line-4" class="code-line" style="padding-left: 15px;">4) T = T \ {u}</div>
+            <div id="code-line-5" class="code-line" style="padding-left: 15px;">5) for each v in Neighbors(u) AND in T:
+            </div>
+            <div id="code-line-6" class="code-line" style="padding-left: 30px;">6) d(v) = min(d(v), d(u) + weight(u,v))
+            </div>
+            <hr style="border:0; border-top:1px solid #475569; margin: 15px 0;">
+            <div
+                style="font-weight:bold; margin-bottom:10px; color:#cbd5e1; font-family: sans-serif; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                Visited Nodes (V \ T)</div>
+            <div id="visited-nodes-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
+    <div id="edge-weight-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Set Edge Weight</h3>
+            <input type="number" id="edge-weight-input" value="1">
+            <div class="modal-actions">
+                <button id="cancel-weight-btn" class="modal-btn secondary-btn">Cancel</button>
+                <button id="save-weight-btn" class="modal-btn primary-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="quiz-error-modal" class="modal hidden">
+        <div class="modal-content" style="width: 450px;">
+            <h3>Incorrect Node Chosen!</h3>
+            <p id="quiz-error-details" style="font-size:1.05rem; line-height:1.5; color:#cbd5e1;"></p>
+            <div class="modal-actions">
+                <button id="quiz-error-close-btn" class="modal-btn secondary-btn">Try Again</button>
+            </div>
+        </div>
+    </div>
+
     <div class="pages-wrapper">
-        <!-- Page 1: Custom Graph -->
         <div id="page-custom" class="page active-page">
             <div class="app-container">
                 <aside class="sidebar">
-                    <header><h2>Custom Graph Builder</h2></header>
+                    <header>
+                        <h2>Custom Graph Builder</h2>
+                    </header>
                     <section class="controls">
                         <div class="control-group action-buttons">
                             <button id="clear-custom-btn" style="background-color: #ef4444;">Clear Canvas</button>
@@ -48,54 +125,142 @@
                         </div>
                         <div class="control-group">
                             <label for="custom-dest-node">Destination Node:</label>
-                            <select id="custom-dest-node"></select>
+                            <select id="custom-dest-node">
+                                <option value="">-- All Nodes --</option>
+                            </select>
                         </div>
                         <div class="control-group toggle-group" style="margin-top: 5px; margin-bottom: 5px;">
-                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;">
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;">
                                 <input type="checkbox" id="custom-show-colors-chk" checked>
                                 Show Dynamic Colors
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444; margin-top: 5px;">
+                                <input type="checkbox" id="custom-allow-negative-chk">
+                                Enable Negative Edges
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                <input type="checkbox" id="custom-directed-chk">
+                                Directed Graph
                             </label>
                         </div>
                         <div class="control-group action-buttons">
                             <button id="custom-start-btn" disabled>Start Algorithm</button>
                             <button id="custom-prev-btn" disabled>Previous Step</button>
                             <button id="custom-next-btn" disabled>Next Step</button>
+                            <button id="custom-start-over-btn" disabled>Start Over</button>
                             <button id="custom-next-iter-btn" disabled>Next Iteration</button>
                         </div>
                     </section>
                     <section class="explanation-panel">
                         <h3>Algorithm State</h3>
                         <div id="custom-explanation-text">Welcome! Tap the canvas to build your custom graph.</div>
-                        <div id="custom-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
+                        <div id="custom-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
+                                style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
                         <div id="custom-distances-state" style="margin-top: 15px; overflow-x: auto;">
-                            <strong>Distances:</strong> 
+                            <strong>Distances:</strong>
                             <div class="distances-table-container"></div>
                         </div>
                     </section>
                 </aside>
 
                 <main class="graph-container">
+                    <div id="math-status-bar-custom" class="math-status-bar hidden"></div>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="legend-color legend-unvisited"></span>Unvisited</div>
+                        <div class="legend-item"><span class="legend-color legend-in-queue"></span>In Queue</div>
+                        <div class="legend-item"><span class="legend-color legend-current"></span>Current Node</div>
+                        <div class="legend-item"><span class="legend-color legend-evaluating"></span>Evaluating</div>
+                        <div class="legend-item"><span class="legend-color legend-finalized"></span>Finalized</div>
+                    </div>
                     <div id="cy-custom" class="cy-instance"></div>
                 </main>
 
-                <!-- Right Toolbar Editor -->
-                <aside class="right-toolbar">
+                <aside class="right-toolbar" data-cy="cy-custom">
                     <div class="toolbar-title">Edit</div>
-                    <button class="tool-btn active" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Node</span></button>
-                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Edge</span></button>
-                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Weight</span></button>
-                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>Remove</span></button>
+                    <button class="tool-btn active" data-mode="pointer" title="Navigate"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                            <path d="M13 13l6 6" />
+                        </svg><span>Pointer</span></button>
+                    <button class="tool-btn" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="16" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Node</span></button>
+                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="5" cy="12" r="3" />
+                            <circle cx="19" cy="12" r="3" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Edge</span></button>
+                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg><span>Weight</span></button>
+                    <button class="tool-btn" data-mode="editDirection"
+                        title="Cycle Edge Direction (tap edge: undirected → A→B → B→A)"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 1l4 4-4 4" />
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                            <path d="M7 23l-4-4 4-4" />
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg><span>Direction</span></button>
+                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg><span>Remove</span></button>
                     <hr class="toolbar-divider">
-                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><span>Table</span></button>
+                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3z" />
+                            <path d="M3 9h18" />
+                            <path d="M9 21V9" />
+                        </svg><span>Table</span></button>
+                    <button class="tool-btn toggle-heap-btn" title="Toggle Floating Heap"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 22h20L12 2z" />
+                        </svg><span>Heap</span></button>
+                    <button class="tool-btn toggle-code-btn" title="Toggle Pseudocode"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg><span>Code</span></button>
+                    <hr class="toolbar-divider">
+                    <button class="tool-btn zoom-in-btn" title="Zoom In"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="11" y1="8" x2="11" y2="14" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom+</span></button>
+                    <span class="zoom-pct-label"
+                        style="font-size:0.7rem; color:#94a3b8; text-align:center; display:block;">100%</span>
+                    <button class="tool-btn zoom-out-btn" title="Zoom Out"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom−</span></button>
                 </aside>
             </div>
         </div>
 
-        <!-- Page 2: Random Graph -->
         <div id="page-random" class="page">
             <div class="app-container">
                 <aside class="sidebar">
-                    <header><h2>Random Graph</h2></header>
+                    <header>
+                        <h2>Random Graph</h2>
+                    </header>
                     <section class="controls">
                         <div class="control-group">
                             <label for="node-count">Graph Size (Nodes):</label>
@@ -107,60 +272,153 @@
                         <div class="control-group"><button id="generate-btn">Generate Random Graph</button></div>
                         <div class="control-group">
                             <label for="source-node">Source Node:</label>
-                            <div class="input-with-toggle"><select id="source-node" disabled></select><label><input type="checkbox" id="rand-source-chk"> Random</label></div>
+                            <div class="input-with-toggle"><select id="source-node" disabled></select><label><input
+                                        type="checkbox" id="rand-source-chk"> Random</label></div>
                         </div>
                         <div class="control-group">
                             <label for="dest-node">Destination Node:</label>
-                            <div class="input-with-toggle"><select id="dest-node" disabled></select><label><input type="checkbox" id="rand-dest-chk"> Random</label></div>
+                            <div class="input-with-toggle"><select id="dest-node" disabled>
+                                    <option value="">-- All Nodes --</option>
+                                </select><label><input type="checkbox" id="rand-dest-chk"> Random</label></div>
                         </div>
                         <div class="control-group toggle-group" style="margin-top: 5px; margin-bottom: 5px;">
-                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;"><input type="checkbox" id="show-colors-chk" checked>Show Dynamic Colors</label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;"><input
+                                    type="checkbox" id="show-colors-chk" checked>Show Dynamic Colors</label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444; margin-top: 5px;">
+                                <input type="checkbox" id="allow-negative-chk"> Enable Negative Edges
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                <input type="checkbox" id="directed-chk"> Directed Graph
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                <input type="checkbox" id="rand-directed-chk"> Random Directed Graph
+                            </label>
                         </div>
                         <div class="control-group action-buttons">
                             <button id="start-btn" disabled>Start Algorithm</button>
                             <button id="prev-btn" disabled>Previous Step</button>
                             <button id="next-btn" disabled>Next Step</button>
+                            <button id="start-over-btn" disabled>Start Over</button>
                             <button id="next-iter-btn" disabled>Next Iteration</button>
                         </div>
                     </section>
                     <section class="explanation-panel">
                         <h3>Algorithm State</h3>
                         <div id="explanation-text">Welcome! Generate a graph to begin.</div>
-                        <div id="pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
-                        <div id="distances-state" style="margin-top: 15px; overflow-x: auto;"><strong>Distances:</strong> <div class="distances-table-container"></div></div>
+                        <div id="pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
+                                style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
+                        <div id="distances-state" style="margin-top: 15px; overflow-x: auto;">
+                            <strong>Distances:</strong>
+                            <div class="distances-table-container"></div>
+                        </div>
                     </section>
                 </aside>
 
                 <main class="graph-container">
+                    <div id="math-status-bar" class="math-status-bar hidden"></div>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="legend-color legend-unvisited"></span>Unvisited</div>
+                        <div class="legend-item"><span class="legend-color legend-in-queue"></span>In Queue</div>
+                        <div class="legend-item"><span class="legend-color legend-current"></span>Current Node</div>
+                        <div class="legend-item"><span class="legend-color legend-evaluating"></span>Evaluating</div>
+                        <div class="legend-item"><span class="legend-color legend-finalized"></span>Finalized</div>
+                    </div>
                     <div id="cy" class="cy-instance"></div>
                 </main>
 
-                <aside class="right-toolbar">
+                <aside class="right-toolbar" data-cy="cy">
                     <div class="toolbar-title">Edit</div>
-                    <button class="tool-btn active" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Node</span></button>
-                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Edge</span></button>
-                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Weight</span></button>
-                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>Remove</span></button>
+                    <button class="tool-btn active" data-mode="pointer" title="Navigate"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                            <path d="M13 13l6 6" />
+                        </svg><span>Pointer</span></button>
+                    <button class="tool-btn" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="16" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Node</span></button>
+                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="5" cy="12" r="3" />
+                            <circle cx="19" cy="12" r="3" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Edge</span></button>
+                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg><span>Weight</span></button>
+                    <button class="tool-btn" data-mode="editDirection"
+                        title="Cycle Edge Direction (tap edge: undirected → A→B → B→A)"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 1l4 4-4 4" />
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                            <path d="M7 23l-4-4 4-4" />
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg><span>Direction</span></button>
+                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg><span>Remove</span></button>
                     <hr class="toolbar-divider">
-                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><span>Table</span></button>
+                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3z" />
+                            <path d="M3 9h18" />
+                            <path d="M9 21V9" />
+                        </svg><span>Table</span></button>
+                    <button class="tool-btn toggle-heap-btn" title="Toggle Floating Heap"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 22h20L12 2z" />
+                        </svg><span>Heap</span></button>
+                    <button class="tool-btn toggle-code-btn" title="Toggle Pseudocode"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg><span>Code</span></button>
+                    <hr class="toolbar-divider">
+                    <button class="tool-btn zoom-in-btn" title="Zoom In"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="11" y1="8" x2="11" y2="14" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom+</span></button>
+                    <span class="zoom-pct-label"
+                        style="font-size:0.7rem; color:#94a3b8; text-align:center; display:block;">100%</span>
+                    <button class="tool-btn zoom-out-btn" title="Zoom Out"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom−</span></button>
                 </aside>
             </div>
         </div>
 
-        <!-- Page 4: Animation Player -->
         <div id="page-animate" class="page">
             <div class="app-container">
                 <aside class="sidebar">
                     <header>
                         <h2>Animation Player</h2>
                     </header>
-                    
+
                     <div class="sidebar-tabs">
                         <button class="tab-btn active" data-tab="anim-graph-tab">Graph Setup</button>
                         <button class="tab-btn" data-tab="anim-play-tab">Global Player</button>
                     </div>
 
-                    <!-- Graph Setup Tab -->
                     <div id="anim-graph-tab" class="tab-pane active-pane">
                         <section class="controls">
                             <div class="control-group">
@@ -173,11 +431,29 @@
                             <div class="control-group"><button id="anim-generate-btn">Generate Graph</button></div>
                             <div class="control-group">
                                 <label for="anim-source-node">Source Node:</label>
-                                <div class="input-with-toggle"><select id="anim-source-node" disabled></select><label><input type="checkbox" id="anim-rand-source-chk"> Random</label></div>
+                                <div class="input-with-toggle"><select id="anim-source-node"
+                                        disabled></select><label><input type="checkbox" id="anim-rand-source-chk">
+                                        Random</label></div>
                             </div>
                             <div class="control-group">
                                 <label for="anim-dest-node">Destination Node:</label>
-                                <div class="input-with-toggle"><select id="anim-dest-node" disabled></select><label><input type="checkbox" id="anim-rand-dest-chk"> Random</label></div>
+                                <div class="input-with-toggle"><select id="anim-dest-node" disabled>
+                                        <option value="">-- All Nodes --</option>
+                                    </select><label><input type="checkbox" id="anim-rand-dest-chk"> Random</label></div>
+                            </div>
+                            <div class="control-group toggle-group" style="margin-top: 5px; margin-bottom: 5px;">
+                                <label
+                                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444;">
+                                    <input type="checkbox" id="anim-allow-negative-chk"> Enable Negative Edges
+                                </label>
+                                <label
+                                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                    <input type="checkbox" id="anim-directed-chk"> Directed Graph
+                                </label>
+                                <label
+                                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                    <input type="checkbox" id="anim-rand-directed-chk"> Random Directed Graph
+                                </label>
                             </div>
                             <div class="control-group action-buttons" style="margin-top: 15px;">
                                 <button id="anim-start-btn" disabled>Lock &amp; Load Algorithm</button>
@@ -185,26 +461,34 @@
                         </section>
                     </div>
 
-                    <!-- Player Tab -->
                     <div id="anim-play-tab" class="tab-pane">
                         <section class="controls">
                             <div class="control-group">
-                                <label>Animation Speed: <strong id="speed-val" style="color:#3b82f6;">800ms</strong></label>
+                                <label>Animation Speed: <strong id="speed-val"
+                                        style="color:#3b82f6;">800ms</strong></label>
                                 <input type="range" id="anim-speed" min="100" max="2500" step="100" value="800">
                             </div>
-                            <div class="control-group action-buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-                                <button id="anim-play-back-btn" class="secondary-btn" disabled>&#9664;&#9664; Auto Rewind</button>
-                                <button id="anim-play-fwd-btn" class="secondary-btn" disabled>Auto Play &#9654;&#9654;</button>
-                                <button id="anim-pause-btn" disabled style="grid-column: span 2; background-color: #f59e0b;">&#10074;&#10074; Pause</button>
+                            <div class="control-group action-buttons"
+                                style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+                                <button id="anim-play-back-btn" class="secondary-btn" disabled>&#9664;&#9664; Auto
+                                    Rewind</button>
+                                <button id="anim-play-fwd-btn" class="secondary-btn" disabled>Auto Play
+                                    &#9654;&#9654;</button>
+                                <button id="anim-pause-btn" disabled
+                                    style="grid-column: span 2; background-color: #f59e0b;">&#10074;&#10074;
+                                    Pause</button>
                             </div>
                             <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border-color);">
                             <div class="control-group action-buttons">
                                 <button id="anim-prev-btn" disabled>Manual Prev Step</button>
                                 <button id="anim-next-btn" disabled>Manual Next Step</button>
+                                <button id="anim-start-over-btn" disabled>Start Over</button>
                                 <button id="anim-next-iter-btn" disabled>Manual Next Iteration</button>
                             </div>
                             <div class="control-group toggle-group" style="margin-top: 15px;">
-                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;"><input type="checkbox" id="anim-show-colors-chk" checked>Show Dynamic Colors</label>
+                                <label
+                                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;"><input
+                                        type="checkbox" id="anim-show-colors-chk" checked>Show Dynamic Colors</label>
                             </div>
                         </section>
                     </div>
@@ -212,61 +496,280 @@
                     <section class="explanation-panel" style="margin-top: 20px;">
                         <h3>Algorithm State</h3>
                         <div id="anim-explanation-text">Generate graph and click Lock &amp; Load to start playing.</div>
-                        <div id="anim-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
-                        <div id="anim-distances-state" style="margin-top: 15px; overflow-x: auto;"><strong>Distances:</strong> <div class="distances-table-container"></div></div>
+                        <div id="anim-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
+                                style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
+                        <div id="anim-distances-state" style="margin-top: 15px; overflow-x: auto;">
+                            <strong>Distances:</strong>
+                            <div class="distances-table-container"></div>
+                        </div>
                     </section>
                 </aside>
 
                 <main class="graph-container">
+                    <div id="math-status-bar-anim" class="math-status-bar hidden"></div>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="legend-color legend-unvisited"></span>Unvisited</div>
+                        <div class="legend-item"><span class="legend-color legend-in-queue"></span>In Queue</div>
+                        <div class="legend-item"><span class="legend-color legend-current"></span>Current Node</div>
+                        <div class="legend-item"><span class="legend-color legend-evaluating"></span>Evaluating</div>
+                        <div class="legend-item"><span class="legend-color legend-finalized"></span>Finalized</div>
+                    </div>
                     <div id="cy-anim" class="cy-instance"></div>
                 </main>
 
-                <aside class="right-toolbar">
+                <aside class="right-toolbar" data-cy="cy-anim">
                     <div class="toolbar-title">Edit</div>
-                    <button class="tool-btn active" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Node</span></button>
-                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Edge</span></button>
-                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Weight</span></button>
-                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>Remove</span></button>
+                    <button class="tool-btn active" data-mode="pointer" title="Navigate"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                            <path d="M13 13l6 6" />
+                        </svg><span>Pointer</span></button>
+                    <button class="tool-btn" data-mode="addNode" title="Add Node"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="16" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Node</span></button>
+                    <button class="tool-btn" data-mode="addEdge" title="Add Edge"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="5" cy="12" r="3" />
+                            <circle cx="19" cy="12" r="3" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg><span>Edge</span></button>
+                    <button class="tool-btn" data-mode="editWeight" title="Edit Weight"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg><span>Weight</span></button>
+                    <button class="tool-btn" data-mode="editDirection" title="Cycle Edge Direction"><svg
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 1l4 4-4 4" />
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                            <path d="M7 23l-4-4 4-4" />
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg><span>Direction</span></button>
+                    <button class="tool-btn" data-mode="remove" title="Remove Element"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg><span>Remove</span></button>
                     <hr class="toolbar-divider">
-                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><span>Table</span></button>
+                    <button class="tool-btn toggle-table-btn" title="Toggle Floating Table"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3z" />
+                            <path d="M3 9h18" />
+                            <path d="M9 21V9" />
+                        </svg><span>Table</span></button>
+                    <button class="tool-btn toggle-heap-btn" title="Toggle Floating Heap"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 22h20L12 2z" />
+                        </svg><span>Heap</span></button>
+                    <button class="tool-btn toggle-code-btn" title="Toggle Pseudocode"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg><span>Code</span></button>
+                    <hr class="toolbar-divider">
+                    <button class="tool-btn zoom-in-btn" title="Zoom In"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="11" y1="8" x2="11" y2="14" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom+</span></button>
+                    <span class="zoom-pct-label"
+                        style="font-size:0.7rem; color:#94a3b8; text-align:center; display:block;">100%</span>
+                    <button class="tool-btn zoom-out-btn" title="Zoom Out"><svg viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg><span>Zoom−</span></button>
                 </aside>
             </div>
         </div>
 
-        <!-- Page 3: Learn Algorithm -->
+        <div id="page-quiz" class="page">
+            <div class="app-container">
+                <aside class="sidebar">
+                    <header>
+                        <h2>Quiz Mode</h2>
+                    </header>
+                    <section class="controls">
+                        <div class="control-group">
+                            <label for="quiz-node-count">Graph Size:</label>
+                            <input type="number" id="quiz-node-count" min="5" max="30" value="10">
+                        </div>
+                        <div class="control-group">
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;">
+                                <input type="checkbox" id="quiz-directed-chk"> Directed Graph
+                            </label>
+                            <label
+                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
+                                <input type="checkbox" id="quiz-rand-directed-chk"> Random Directed Graph
+                            </label>
+                        </div>
+                        <div class="control-group"><button id="quiz-generate-btn">Generate Quiz Graph</button></div>
+                        <div class="control-group">
+                            <label for="quiz-source-node">Source Node:</label>
+                            <select id="quiz-source-node" disabled></select>
+                        </div>
+                        <div class="control-group action-buttons" style="margin-top: 15px;">
+                            <button id="quiz-start-btn" disabled>Start Quiz!</button>
+                        </div>
+                    </section>
+                    <section class="explanation-panel" style="margin-top: 20px;">
+                        <h3>Quiz Status</h3>
+                        <div id="quiz-explanation-text">Configure graph and press start.</div>
+                        <div id="quiz-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
+                                style="display:block; margin-top:5px; color:#64748b;">(Hidden during quiz)</span></div>
+                        <div id="quiz-distances-state" style="margin-top: 15px; overflow-x: auto;">
+                            <strong>Distances:</strong>
+                            <div class="distances-table-container"></div>
+                        </div>
+                    </section>
+                </aside>
+                <main class="graph-container">
+                    <div id="math-status-bar-quiz" class="math-status-bar hidden"></div>
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="legend-color legend-unvisited"></span>Unvisited</div>
+                        <div class="legend-item"><span class="legend-color legend-in-queue"></span>In Queue</div>
+                        <div class="legend-item"><span class="legend-color legend-current"></span>Current Node</div>
+                        <div class="legend-item"><span class="legend-color legend-evaluating"></span>Evaluating</div>
+                        <div class="legend-item"><span class="legend-color legend-finalized"></span>Finalized</div>
+                    </div>
+                    <div id="cy-quiz" class="cy-instance"></div>
+                </main>
+                <aside class="right-toolbar">
+                    <div class="toolbar-title">Views</div>
+                    <button class="tool-btn toggle-table-btn active" title="Toggle Floating Table"><svg
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3h18v18H3z" />
+                            <path d="M3 9h18" />
+                            <path d="M9 21V9" />
+                        </svg><span>Table</span></button>
+                    <button class="tool-btn toggle-code-btn" title="Toggle Pseudocode"><svg viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg><span>Code</span></button>
+                </aside>
+            </div>
+        </div>
+
         <div id="page-learn" class="page">
             <div class="learn-container">
                 <div style="display:flex; justify-content: space-between; align-items:flex-end;">
-                  <h1>Understanding Dijkstra's Algorithm</h1>
+                    <h1>Understanding Dijkstra's Algorithm & Min-Heaps</h1>
                 </div>
-                
-                <div style="display: flex; gap: 40px; align-items: flex-start; margin-top: 10px;">
-                    <div style="flex: 1;">
-                        <p><strong>Dijkstra's Algorithm</strong> is a fundamental pathfinding mathematical algorithm conceived by Edsger W. Dijkstra in 1956. It efficiently solves the <em>Single-Source Shortest Path</em> problem, computing the mathematically shortest distance from an initial source node to every single other node in the network.</p>
-                        
-                        <h3>How It Works Greedily</h3>
-                        <ol style="line-height: 1.8; margin-left: 20px; color: #334155; margin-bottom: 20px;">
-                            <li><strong>Initialization:</strong> Set the distance to the <code>Source Node</code> to <code>0</code>, and all other nodes to <code>Infinity</code>. Insert all known nodes into a Priority Queue (a Min-Heap).</li>
-                            <li><strong>Extract Minimum:</strong> <em>At each step</em>, extract the node with the absolute smallest known distance. Because no negative edges exist, this guarantees the shortest path to this specific node is securely finalized forever.</li>
-                            <li><strong>Edge Relaxation:</strong> Examine all neighbors of the current node. If passing entirely through the current node yields a shorter combined mathematical distance to the neighbor, then "relax" the edge: boldly update the neighboring distance to the improved value, and update its priority in the queue.</li>
-                            <li><strong>Completion:</strong> Repeat this systematically until the destination is extracted. Automatically backlight the traversed parent-nodes backwards to perfectly reconstruct your final optimal route tree!</li>
-                        </ol>
 
-                        <h3 style="color: #ef4444;">The Negative Weight Limitation</h3>
-                        <p style="border-left: 4px solid #ef4444; padding-left: 15px; margin-top: 10px; background: white; padding: 15px;">Dijkstra's Algorithm inherently assumes that constantly adding edges to a path can <em>only increase</em> its total length over time. This foundational assumption empowers it to radically freeze a node's shortest distance mathematically once it is extracted from the queue. If negative weights existed, a previously finalized optimal path could suddenly be reduced by a sneaky negative edge later on, violently breaking the algorithm's entire greedy mathematical proof! Dijkstra simply fails when a network generates negative cycles.</p>
-                    </div>
-                    
-                    <div style="flex: 1;">
-                        <div class="video-wrapper">
-                            <iframe width="100%" height="450" style="min-height: 400px;" src="https://www.youtube.com/embed/_lHSawdgXpI" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                <div class="learn-grid">
+                    <div class="learn-section" style="display:flex; gap: 30px;">
+                        <div style="flex: 1;">
+                            <h3>Section 1: What is Dijkstra's Algorithm?</h3>
+                            <p><strong>Dijkstra's Algorithm</strong> computes the absolute shortest paths from a single
+                                starting node to every other node in a graph. It works by expanding outward like a
+                                ripple in a pond. At every step, the algorithm looks at all unvisited boundary nodes and
+                                <strong>greedily</strong> chooses the one that is strictly the closest. By rigorously
+                                finalizing distances one by one in ascending order, it slowly maps the perfect path to
+                                all destinations without ever needing to guess or backtrack.
+                            </p>
+                            <div
+                                style="background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.95rem; line-height: 1.6; margin-top: 15px;">
+                                <div
+                                    style="font-weight:bold; color:#cbd5e1; margin-bottom: 10px; font-family:sans-serif; text-transform:uppercase; font-size:0.8rem; letter-spacing:0.05em;">
+                                    Formal Pseudocode</div>
+                                <div>1) d(s) = 0, d(v) = &infin; for all v &ne; s. T = V.</div>
+                                <div>2) while T is not empty:</div>
+                                <div style="padding-left: 15px;">3) u = arg min { d(v) | v &isin; T }</div>
+                                <div style="padding-left: 15px;">4) T = T \ {u}</div>
+                                <div style="padding-left: 15px;">5) for each v in Neighbors(u) AND in T:</div>
+                                <div style="padding-left: 30px;">6) d(v) = min(d(v), d(u) + weight(u,v))</div>
+                            </div>
+                            <h3 style="margin-top:20px;">Section 2: What is a Min-Heap?</h3>
+                            <p>A <strong>Min-Heap</strong> is a specialized binary tree designed to instantly answer one
+                                specific question: <em>"What is the smallest number right now?"</em>. It strictly
+                                enforces the <strong>Heap Property</strong>: every parent node must be geometrically
+                                smaller than both its children. Because of this structural rule, the absolute minimum
+                                element is physically trapped at the very top (the root) of the tree at all times.</p>
                         </div>
+                        <div style="flex: 1;">
+                            <div class="video-wrapper">
+                                <iframe width="100%" height="300" src="https://www.youtube.com/embed/_lHSawdgXpI"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="learn-section">
+                        <div style="display:flex; gap: 30px; align-items:center;">
+                            <div style="flex: 1;">
+                                <h3>Section 3: The Integration Engine (Why O(log V)?)</h3>
+                                <p>To efficiently figure out which boundary node is currently the closest, Dijkstra's
+                                    Algorithm utilizes a Priority Queue. If we used a standard list, searching for the
+                                    smallest path would require scanning every single node, costing <code>O(V)</code>
+                                    time per step. Instead, by integrating a <strong>Min-Heap</strong>, the engine
+                                    simply pops the root. Re-stabilizing the tree after popping only requires filtering
+                                    the gaps down the height of the tree. Since the tree halves at every tier, the
+                                    height is <code>O(log V)</code>. Thus, discovering and extracting the next optimal
+                                    node costs only <strong><code>O(log V)</code></strong> time, accelerating massive
+                                    network calculations immensely!</p>
+                            </div>
+                            <div style="flex: 1;" class="static-heap-demo">
+                                <div class="heap-tree">
+                                    <div class="heap-level">
+                                        <div class="heap-node min-element"><span class="node-id">A</span><span
+                                                class="node-val">0</span></div>
+                                    </div>
+                                    <div class="heap-level">
+                                        <div class="heap-node"><span class="node-id">B</span><span
+                                                class="node-val">5</span></div>
+                                        <div class="heap-node"><span class="node-id">C</span><span
+                                                class="node-val">8</span></div>
+                                    </div>
+                                    <div class="heap-level">
+                                        <div class="heap-node"><span class="node-id">D</span><span
+                                                class="node-val">12</span></div>
+                                        <div class="heap-node"><span class="node-id">E</span><span
+                                                class="node-val">15</span></div>
+                                        <div class="heap-node"><span class="node-id">F</span><span
+                                                class="node-val">9</span></div>
+                                        <div class="heap-node"><span class="node-id">G</span><span
+                                                class="node-val">22</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="learn-section">
+                        <h3 style="color: #ef4444;">Section 4: The Cycle Dilemma</h3>
+                        <p>Dijkstra's Algorithm easily handles <strong>Positive Cycles</strong> because traveling
+                            through them continuously strictly <em>increases</em> the total mathematical distance,
+                            naturally causing the Min-Heap engine to eventually reject those inflated paths. However, if
+                            <strong>Negative Cycles</strong> are injected into the grid, the algorithm's entire "Greedy
+                            Choice Property" shatters. A node previously extracted from the top of the Min-Heap—assumed
+                            fully finalized and optimal—could mathematically be sabotaged by a hidden negative loop
+                            found deeper in the graph. This paradox breaks the engine, causing it to dive into recursive
+                            infinite loops unless explicitly trapped.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Our main logic file -->
     <script src="script.js"></script>
 </body>
+
 </html>
