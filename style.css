@@ -124,6 +124,24 @@ body {
     padding-bottom: 15px;
 }
 
+.learn-read-more-btn {
+    background-color: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 10px 24px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 15px 0;
+}
+
+.learn-read-more-btn:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
 .learn-container p {
     font-size: 1.1rem;
     line-height: 1.6;
@@ -216,6 +234,25 @@ header h2 {
     gap: 12px;
     box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
     z-index: 10;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.right-toolbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.right-toolbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.right-toolbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+.right-toolbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .toolbar-title {
@@ -224,6 +261,24 @@ header h2 {
     color: #94a3b8;
     margin-bottom: 10px;
     text-transform: uppercase;
+}
+
+.quiz-lives {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    font-size: 1.5rem;
+    z-index: 50;
+    background: rgba(30, 41, 59, 0.7);
+    padding: 6px 12px;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.quiz-heart {
+    transition: transform 0.2s;
 }
 
 .tool-btn {

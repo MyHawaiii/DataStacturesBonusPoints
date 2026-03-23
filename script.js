@@ -15,6 +15,7 @@ class MinPriorityQueue {
     heapifyUp() { let index = this.heap.length - 1; while (this.hasParent(index) && this.parent(index).priority > this.heap[index].priority) { this.swap(this.getParentIndex(index), index); index = this.getParentIndex(index); } }
     heapifyDown() { let index = 0; while (this.hasLeftChild(index)) { let smallerChildIndex = this.getLeftChildIndex(index); if (this.hasRightChild(index) && this.rightChild(index).priority < this.leftChild(index).priority) { smallerChildIndex = this.getRightChildIndex(index); } if (this.heap[index].priority <= this.heap[smallerChildIndex].priority) { break; } else { this.swap(index, smallerChildIndex); } index = smallerChildIndex; } }
     isEmpty() { return this.heap.length === 0; }
+    remove(node) { const index = this.heap.findIndex(i => i.node === node); if (index === -1) return; this.heap.splice(index, 1); const elements = [...this.heap]; this.heap = []; elements.forEach(el => this.enqueue(el.node, el.priority)); }
 }
 
 class Graph {
@@ -44,12 +45,21 @@ function* runDijkstraStepByStep(graph, startNode, endNode) {
     yield { type: 'INIT', codeLine: 1, message: `Initialization: Set distance to source node (${startNode}) to 0 and all other nodes to Infinity. Added source to Priority Queue.`, ..._sn() };
 
     while (!pq.isEmpty()) {
-        const currentItem = pq.dequeue();
-        const currentNode = currentItem.node;
+        let currentItem = pq.dequeue();
+        let currentNode = currentItem.node;
 
         if (visited.has(currentNode)) { continue; }
 
-        yield { type: 'EXTRACT_MIN', codeLine: 3, currentNode, priority: currentItem.priority, message: `Extracted node ${currentNode} from Priority Queue with shortest known distance: ${currentItem.priority}.`, ..._sn() };
+        const userChoice = yield { type: 'EXTRACT_MIN', codeLine: 3, currentNode, priority: currentItem.priority, message: `Extracted node ${currentNode} from Priority Queue with shortest known distance: ${currentItem.priority}.`, ..._sn() };
+
+        if (userChoice && userChoice !== currentNode) {
+            pq.enqueue(currentNode, currentItem.priority);
+            const userPrioNode = pq.heap.find(i => i.node === userChoice);
+            const userPriority = userPrioNode ? userPrioNode.priority : currentItem.priority;
+            pq.remove(userChoice);
+            currentNode = userChoice;
+            currentItem = { node: currentNode, priority: userPriority };
+        }
 
         if (endNode && currentNode === endNode) {
             visited.add(currentNode);
@@ -189,7 +199,7 @@ function createVisualUpdater(cyInstance, explanationsObj) {
             }
         }
 
-        cyInstance.edges().removeClass('evaluating-edge dynamic-tree-edge path-edge dimmed');
+        cyInstance.edges().removeClass('evaluating-edge tree-edge dynamic-tree-edge path-edge dimmed');
         cyInstance.nodes().removeClass('current-node finalized in-queue dimmed');
         const mathBar = cyInstance.container().parentElement.querySelector('.math-status-bar');
         if (mathBar) { mathBar.classList.add('hidden'); mathBar.innerHTML = ''; }
@@ -210,9 +220,14 @@ function createVisualUpdater(cyInstance, explanationsObj) {
         if (showColors && state.previous) {
             for (const [node, prevNode] of state.previous.entries()) {
                 if (prevNode !== null) {
+                    const isNodeFinalized = (state.visitedSet && (state.visitedSet.includes ? state.visitedSet.includes(node) : state.visitedSet.has(node))) || cyInstance.getElementById(node).hasClass('finalized');
                     const directEdge = cyInstance.edges(`[source = "${prevNode}"][target = "${node}"]`);
                     const undirEdge = cyInstance.edges(`[source = "${node}"][target = "${prevNode}"]`).not('.directed');
-                    directEdge.add(undirEdge).addClass('dynamic-tree-edge');
+                    if (isNodeFinalized) {
+                        directEdge.add(undirEdge).addClass('dynamic-tree-edge');
+                    } else {
+                        directEdge.add(undirEdge).addClass('tree-edge');
+                    }
                 }
             }
         }
@@ -289,13 +304,27 @@ function rebuildInternalGraph(cyInstance, internalGraphObj) {
     cyInstance.edges().forEach(e => internalGraphObj.addEdge(e.source().id(), e.target().id(), parseInt(e.data('weight')), e.hasClass('directed')));
 }
 
-function attachGraphEditorEvents(prefix, cyInstance, internalGraphObj, dropdownUpdater) {
+function attachGraphEditorEvents(prefix, cyInstance, internalGraphObj, dropdownUpdater, isAlgorithmRunningFn = () => false) {
     let firstSelectedNode = null;
     let localNodeCounter = cyInstance.nodes().length;
     let localEdgeCounter = cyInstance.edges().length;
 
+    // Prevent editing if algorithm is running
+    const checkAlgorithmRunning = () => {
+        if (isAlgorithmRunningFn && isAlgorithmRunningFn()) {
+            showError("Cannot edit graph while algorithm/quiz is running. Press Start Over first.");
+            return true;
+        }
+        return false;
+    };
+
+
+
     cyInstance.on('tap', async (e) => {
         const mode = window.currentToolMode;
+        if (mode !== 'pointer') {
+            if (checkAlgorithmRunning()) return;
+        }
         const target = e.target;
 
         if (mode === 'addNode' && target === cyInstance) {
@@ -427,14 +456,11 @@ function configureVisualizerControls(prefix, cyInstance, internalGraphObj) {
     }
     if (startOverBtn) {
         startOverBtn.addEventListener('click', () => {
-            generator = null; history = []; historyIdx = -1;
-            cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
-            cyInstance.edges().removeStyle('label'); cyInstance.edges().removeStyle('font-size'); cyInstance.edges().removeStyle('font-weight'); cyInstance.edges().removeStyle('color'); cyInstance.edges().removeStyle('text-background-opacity');
-            expText.innerHTML = `Welcome! Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
-            const fTable = document.getElementById('floating-table-content'); if (fTable) fTable.innerHTML = '';
-            const fHeap = document.getElementById('floating-heap-content'); if (fHeap) fHeap.innerHTML = '';
-            startBtn.disabled = false; sourceSelect.disabled = false; destSelect.disabled = false;
-            nextBtn.disabled = true; prevBtn.disabled = true; nextIterBtn.disabled = true; startOverBtn.disabled = true;
+            if (!generator || history.length === 0) return;
+            document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click());
+            historyIdx = 0;
+            applyState();
+            startOverBtn.disabled = true;
         });
     }
 
@@ -453,6 +479,7 @@ function configureVisualizerControls(prefix, cyInstance, internalGraphObj) {
 
     startBtn.addEventListener('click', () => {
         if (!sourceSelect.value) { showError("Ensure Source node is selected."); return; }
+        document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click());
         cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge');
         if (cyInstance.getElementById(sourceSelect.value).length) cyInstance.getElementById(sourceSelect.value).addClass('source');
         if (destSelect.value && cyInstance.getElementById(destSelect.value).length) cyInstance.getElementById(destSelect.value).addClass('target');
@@ -468,9 +495,12 @@ function configureVisualizerControls(prefix, cyInstance, internalGraphObj) {
     });
     nextBtn.addEventListener('click', () => { if (!generator) return; if (historyIdx < history.length - 1) historyIdx++; else { const res = generator.next(); if (res.done) return; history.push(res.value); historyIdx++; } applyState(); });
     prevBtn.addEventListener('click', () => { if (historyIdx > 0) { historyIdx--; nextBtn.disabled = false; nextIterBtn.disabled = false; applyState(); } });
-    nextIterBtn.addEventListener('click', () => { if (!generator) return; while (historyIdx === history.length - 1) { const res = generator.next(); if (res.done) break; history.push(res.value); if (res.value.type === 'EXTRACT_MIN' || res.value.type === 'PATH_FOUND' || res.value.type === 'DONE' || res.value.type === 'TRAP_TRIGGERED') break; } historyIdx = history.length - 1; applyState(); });
+    nextIterBtn.addEventListener('click', () => { if (!generator) return; while(true){ if(historyIdx < history.length - 1){ historyIdx++; const h = history[historyIdx]; if(h.type==='EXTRACT_MIN'||h.type==='PATH_FOUND'||h.type==='DONE'||h.type==='TRAP_TRIGGERED') break; } else { const res = generator.next(); if(res.done) break; history.push(res.value); historyIdx++; if(res.value.type==='EXTRACT_MIN'||res.value.type==='PATH_FOUND'||res.value.type==='DONE'||res.value.type==='TRAP_TRIGGERED') break; } } applyState(); });
 
-    return { reset: () => { startBtn.disabled = false; nextBtn.disabled = true; prevBtn.disabled = true; nextIterBtn.disabled = true; if (startOverBtn) startOverBtn.disabled = true; } };
+    return { 
+        reset: () => { startBtn.disabled = false; nextBtn.disabled = true; prevBtn.disabled = true; nextIterBtn.disabled = true; if (startOverBtn) startOverBtn.disabled = true; },
+        isRunning: () => generator !== null
+    };
 }
 
 function configureAnimationControls(prefix, cyInstance, internalGraphObj) {
@@ -515,6 +545,7 @@ function configureAnimationControls(prefix, cyInstance, internalGraphObj) {
         startOverBtn.addEventListener('click', () => {
             stopAnimations();
             generator = null; history = []; historyIdx = -1;
+            document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click());
             cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
             cyInstance.edges().removeStyle('label'); cyInstance.edges().removeStyle('font-size'); cyInstance.edges().removeStyle('font-weight'); cyInstance.edges().removeStyle('color'); cyInstance.edges().removeStyle('text-background-opacity');
             expText.innerHTML = `Welcome! Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
@@ -536,21 +567,24 @@ function configureAnimationControls(prefix, cyInstance, internalGraphObj) {
         if (isAtEnd) { nextBtn.disabled = true; nextIterBtn.disabled = true; fwdBtn.disabled = true; stopAnimations(); startBtn.disabled = false; sourceSelect.disabled = false; destSelect.disabled = false; } else if (historyIdx < history.length - 1 || generator) { nextBtn.disabled = false; nextIterBtn.disabled = false; fwdBtn.disabled = false; }
     }
 
-    startBtn.addEventListener('click', () => { if (!sourceSelect.value) { showError("Ensure Source node is selected."); return; } cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge'); if (cyInstance.getElementById(sourceSelect.value).length) cyInstance.getElementById(sourceSelect.value).addClass('source'); if (destSelect.value && cyInstance.getElementById(destSelect.value).length) cyInstance.getElementById(destSelect.value).addClass('target'); generator = runDijkstraStepByStep(internalGraphObj, sourceSelect.value, destSelect.value); history = []; historyIdx = -1; const first = generator.next(); if (first.done) return; history.push(first.value); historyIdx = 0; startBtn.disabled = true; sourceSelect.disabled = true; destSelect.disabled = true; if (resetBtn) resetBtn.classList.remove('hidden'); if (startOverBtn) startOverBtn.disabled = false; applyState(); });
+    startBtn.addEventListener('click', () => { if (!sourceSelect.value) { showError("Ensure Source node is selected."); return; } document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click()); cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge'); if (cyInstance.getElementById(sourceSelect.value).length) cyInstance.getElementById(sourceSelect.value).addClass('source'); if (destSelect.value && cyInstance.getElementById(destSelect.value).length) cyInstance.getElementById(destSelect.value).addClass('target'); generator = runDijkstraStepByStep(internalGraphObj, sourceSelect.value, destSelect.value); history = []; historyIdx = -1; const first = generator.next(); if (first.done) return; history.push(first.value); historyIdx = 0; startBtn.disabled = true; sourceSelect.disabled = true; destSelect.disabled = true; if (resetBtn) resetBtn.classList.remove('hidden'); if (startOverBtn) startOverBtn.disabled = false; applyState(); });
     nextBtn.addEventListener('click', () => { stopAnimations(); if (!generator) return; if (historyIdx < history.length - 1) historyIdx++; else { const res = generator.next(); if (res.done) return; history.push(res.value); historyIdx++; } applyState(); });
     prevBtn.addEventListener('click', () => { stopAnimations(); if (historyIdx > 0) { historyIdx--; applyState(); } });
-    nextIterBtn.addEventListener('click', () => { stopAnimations(); if (!generator) return; while (historyIdx === history.length - 1) { const res = generator.next(); if (res.done) break; history.push(res.value); if (res.value.type === 'EXTRACT_MIN' || res.value.type === 'PATH_FOUND' || res.value.type === 'DONE' || res.value.type === 'TRAP_TRIGGERED') break; } historyIdx = history.length - 1; applyState(); });
+    nextIterBtn.addEventListener('click', () => { stopAnimations(); if (!generator) return; while(true){ if(historyIdx < history.length - 1){ historyIdx++; const h = history[historyIdx]; if(h.type==='EXTRACT_MIN'||h.type==='PATH_FOUND'||h.type==='DONE'||h.type==='TRAP_TRIGGERED') break; } else { const res = generator.next(); if(res.done) break; history.push(res.value); historyIdx++; if(res.value.type==='EXTRACT_MIN'||res.value.type==='PATH_FOUND'||res.value.type==='DONE'||res.value.type==='TRAP_TRIGGERED') break; } } applyState(); });
     fwdBtn.addEventListener('click', () => { if (!generator) return; stopAnimations(); pauseBtn.disabled = false; fwdBtn.style.color = '#fff'; fwdBtn.style.fontWeight = 'bold'; const speed = parseInt(speedInput.value); fwdAnimInterval = setInterval(() => { if (historyIdx < history.length - 1) historyIdx++; else { const res = generator.next(); if (res.done) { stopAnimations(); applyState(); return; } history.push(res.value); historyIdx++; } applyState(); }, speed); });
     backBtn.addEventListener('click', () => { if (!generator || historyIdx <= 0) return; stopAnimations(); pauseBtn.disabled = false; backBtn.style.color = '#fff'; backBtn.style.fontWeight = 'bold'; const speed = parseInt(speedInput.value); backAnimInterval = setInterval(() => { if (historyIdx > 0) { historyIdx--; applyState(); } else { stopAnimations(); applyState(); } }, speed); });
     pauseBtn.addEventListener('click', () => { stopAnimations(); applyState(); });
 
-    return { reset: () => { stopAnimations(); startBtn.disabled = false; nextBtn.disabled = true; prevBtn.disabled = true; nextIterBtn.disabled = true; fwdBtn.disabled = true; backBtn.disabled = true; if (startOverBtn) startOverBtn.disabled = true; } };
+    return { 
+        reset: () => { stopAnimations(); startBtn.disabled = false; nextBtn.disabled = true; prevBtn.disabled = true; nextIterBtn.disabled = true; fwdBtn.disabled = true; backBtn.disabled = true; pauseBtn.disabled = true; if (startOverBtn) startOverBtn.disabled = true; },
+        isRunning: () => generator !== null
+    };
 }
 
-const cyStyle = [{ selector: 'node', style: { 'background-color': '#e2e8f0', 'label': 'data(label)', 'color': '#1e293b', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '12px', 'width': '35px', 'height': '35px', 'border-width': 2, 'border-color': '#64748b', 'transition-property': 'background-color, border-color, underlay-opacity, underlay-color, underlay-padding', 'transition-duration': '0.3s' } }, { selector: 'edge', style: { 'width': 3, 'line-color': '#cbd5e1', 'label': 'data(weight)', 'font-size': '12px', 'text-background-color': '#ffffff', 'text-background-opacity': 0.8, 'text-background-padding': '2px', 'text-background-shape': 'round-rectangle', 'color': '#475569', 'curve-style': 'bezier', 'text-rotation': 'autorotate', 'target-arrow-shape': 'none' } }, { selector: '.directed', style: { 'target-arrow-shape': 'triangle', 'target-arrow-color': '#cbd5e1' } }, { selector: '.directed.evaluating-edge', style: { 'target-arrow-color': '#a855f7' } }, { selector: '.directed.path-edge', style: { 'target-arrow-color': '#10b981' } }, { selector: '.directed.tree-edge', style: { 'target-arrow-color': '#3b82f6' } }, { selector: '.directed.dynamic-tree-edge', style: { 'target-arrow-color': '#10b981' } }, { selector: '.in-queue', style: { 'border-color': '#f97316', 'border-width': 4, 'underlay-color': '#f97316', 'underlay-padding': 6, 'underlay-opacity': 0.4 } }, { selector: '.current-node', style: { 'border-color': '#3b82f6', 'border-width': 6, 'underlay-color': '#3b82f6', 'underlay-padding': 10, 'underlay-opacity': 0.5, 'background-color': '#eff6ff', 'color': '#1e3a8a' } }, { selector: '.evaluating-edge', style: { 'line-color': '#a855f7', 'width': 5, 'line-style': 'dashed' } }, { selector: '.finalized', style: { 'background-color': '#10b981', 'border-color': '#059669', 'color': '#ffffff' } }, { selector: '.dimmed', style: { 'opacity': 0.2 } }, { selector: '.source', style: { 'background-color': '#10b981', 'border-color': '#059669', 'border-width': 4, 'color': '#ffffff' } }, { selector: '.target', style: { 'background-color': '#f59e0b', 'border-color': '#d97706', 'border-width': 4, 'color': '#ffffff' } }, { selector: '.path-edge', style: { 'line-color': '#10b981', 'width': 5 } }, { selector: '.tree-edge', style: { 'line-color': '#3b82f6', 'width': 3 } }, { selector: '.dynamic-tree-edge', style: { 'line-color': '#10b981', 'width': 3 } }, { selector: '.glow-success', style: { 'underlay-color': '#10b981', 'underlay-padding': 12, 'underlay-opacity': 0.9 } }, { selector: '.glow-fail', style: { 'underlay-color': '#ef4444', 'underlay-padding': 12, 'underlay-opacity': 0.9 } }];
+const cyStyle = [{ selector: 'node', style: { 'background-color': '#e2e8f0', 'label': 'data(label)', 'color': '#1e293b', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '12px', 'width': '35px', 'height': '35px', 'border-width': 2, 'border-color': '#64748b', 'transition-property': 'background-color, border-color, underlay-opacity, underlay-color, underlay-padding', 'transition-duration': '0.3s' } }, { selector: 'edge', style: { 'width': 3, 'line-color': '#cbd5e1', 'label': 'data(weight)', 'font-size': '12px', 'text-background-color': '#ffffff', 'text-background-opacity': 0.8, 'text-background-padding': '2px', 'text-background-shape': 'round-rectangle', 'color': '#475569', 'curve-style': 'bezier', 'text-rotation': 'autorotate', 'target-arrow-shape': 'none' } }, { selector: '.directed', style: { 'target-arrow-shape': 'triangle', 'target-arrow-color': '#cbd5e1' } }, { selector: '.directed.evaluating-edge', style: { 'target-arrow-color': '#a855f7' } }, { selector: '.directed.path-edge', style: { 'target-arrow-color': '#10b981' } }, { selector: '.directed.tree-edge', style: { 'target-arrow-color': '#3b82f6' } }, { selector: '.directed.dynamic-tree-edge', style: { 'target-arrow-color': '#10b981' } }, { selector: '.in-queue', style: { 'border-color': '#f97316', 'border-width': 4, 'underlay-color': '#f97316', 'underlay-padding': 6, 'underlay-opacity': 0.4 } }, { selector: '.evaluating-edge', style: { 'line-color': '#a855f7', 'width': 5, 'line-style': 'dashed' } }, { selector: '.finalized', style: { 'background-color': '#10b981', 'border-color': '#059669', 'color': '#ffffff' } }, { selector: '.current-node', style: { 'border-color': '#3b82f6', 'border-width': 6, 'underlay-color': '#3b82f6', 'underlay-padding': 10, 'underlay-opacity': 0.5, 'background-color': '#eff6ff', 'color': '#1e3a8a' } }, { selector: '.dimmed', style: { 'opacity': 0.2 } }, { selector: '.source', style: { 'background-color': '#10b981', 'border-color': '#059669', 'border-width': 4, 'color': '#ffffff' } }, { selector: '.target', style: { 'background-color': '#f59e0b', 'border-color': '#d97706', 'border-width': 4, 'color': '#ffffff' } }, { selector: '.path-edge', style: { 'line-color': '#10b981', 'width': 5 } }, { selector: '.tree-edge', style: { 'line-color': '#3b82f6', 'width': 3 } }, { selector: '.dynamic-tree-edge', style: { 'line-color': '#10b981', 'width': 3 } }, { selector: '.glow-success', style: { 'underlay-color': '#10b981', 'underlay-padding': 12, 'underlay-opacity': 0.9 } }, { selector: '.glow-fail', style: { 'underlay-color': '#ef4444', 'underlay-padding': 12, 'underlay-opacity': 0.9 } }];
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.tool-btn[data-mode]').forEach(btn => { btn.addEventListener('click', (e) => { document.querySelectorAll('.tool-btn[data-mode]').forEach(b => b.classList.remove('active')); const specificBtn = e.currentTarget; specificBtn.classList.add('active'); window.currentToolMode = specificBtn.dataset.mode; }); });
+    document.querySelectorAll('.tool-btn[data-mode]').forEach(btn => { btn.addEventListener('click', (e) => { const toolbar = e.currentTarget.closest('.right-toolbar'); if (toolbar) { toolbar.querySelectorAll('.tool-btn[data-mode]').forEach(b => b.classList.remove('active')); } e.currentTarget.classList.add('active'); window.currentToolMode = e.currentTarget.dataset.mode; }); });
     document.querySelectorAll('.sidebar-tabs .tab-btn').forEach(btn => { btn.addEventListener('click', (e) => { document.querySelectorAll('.sidebar-tabs .tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane')); e.target.classList.add('active'); document.getElementById(e.target.dataset.tab).classList.add('active-pane'); }); });
 
     const floatingTable = document.getElementById('floating-table');
@@ -605,9 +639,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const vList = document.getElementById('visited-nodes-list'); if (vList) vList.innerHTML = '';
         document.querySelectorAll('.code-line').forEach(el => el.style.color = '#cbd5e1');
     };
-    navBtns.forEach(btn => { btn.addEventListener('click', (e) => { navBtns.forEach(b => b.classList.remove('active')); pages.forEach(p => p.classList.remove('active-page')); e.target.classList.add('active'); const tgt = e.target.dataset.target; document.getElementById(tgt).classList.add('active-page'); resetFloatingPanels(); if (tgt === 'page-random' && window.cyRandom) window.cyRandom.resize(); if (tgt === 'page-custom' && window.cyCustom) window.cyCustom.resize(); if (tgt === 'page-animate' && window.cyAnim) window.cyAnim.resize(); if (tgt === 'page-quiz' && window.cyQuiz) window.cyQuiz.resize(); }); });
+    navBtns.forEach(btn => { btn.addEventListener('click', (e) => { navBtns.forEach(b => b.classList.remove('active')); pages.forEach(p => p.classList.remove('active-page')); e.target.classList.add('active'); const tgt = e.target.dataset.target; document.getElementById(tgt).classList.add('active-page'); resetFloatingPanels(); window.currentToolMode = 'pointer'; const activePage = document.getElementById(tgt); if (activePage) { activePage.querySelectorAll('.tool-btn[data-mode]').forEach(b => b.classList.remove('active')); const ptrBtn = activePage.querySelector('.tool-btn[data-mode="pointer"]'); if (ptrBtn) ptrBtn.classList.add('active'); } if (tgt === 'page-random' && window.cyRandom) window.cyRandom.resize(); if (tgt === 'page-custom' && window.cyCustom) window.cyCustom.resize(); if (tgt === 'page-animate' && window.cyAnim) window.cyAnim.resize(); if (tgt === 'page-quiz' && window.cyQuiz) window.cyQuiz.resize(); }); });
 
-    const cyMap = { 'cy': () => window.cyRandom, 'cy-custom': () => window.cyCustom, 'cy-anim': () => window.cyAnim };
+    const cyMap = { 'cy': () => window.cyRandom, 'cy-custom': () => window.cyCustom, 'cy-anim': () => window.cyAnim, 'cy-quiz': () => window.cyQuiz };
     document.querySelectorAll('.right-toolbar[data-cy]').forEach(toolbar => {
         const getCy = cyMap[toolbar.dataset.cy];
         const zInBtn = toolbar.querySelector('.zoom-in-btn');
@@ -634,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cyRandom = cytoscape({ container: document.getElementById('cy'), style: cyStyle, layout: { name: 'cose' } });
     const randomControls = configureVisualizerControls('', window.cyRandom, randomGraph);
     const sourceSelect = document.getElementById('source-node'); const destSelect = document.getElementById('dest-node');
-    attachGraphEditorEvents('', window.cyRandom, randomGraph, () => { sourceSelect.innerHTML = ''; destSelect.innerHTML = '<option value="">-- All Nodes --</option>'; randomGraph.getVertices().forEach(v => { sourceSelect.add(new Option(v, v)); destSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('start-btn'); if (sBtn) sBtn.disabled = sourceSelect.options.length < 2; });
+    attachGraphEditorEvents('', window.cyRandom, randomGraph, () => { sourceSelect.innerHTML = ''; destSelect.innerHTML = '<option value="">-- All Nodes --</option>'; randomGraph.getVertices().forEach(v => { sourceSelect.add(new Option(v, v)); destSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('start-btn'); if (sBtn) sBtn.disabled = sourceSelect.options.length < 2; }, () => randomControls.isRunning());
 
     const generateBtn = document.getElementById('generate-btn'); const nodeCountInput = document.getElementById('node-count'); const randSizeChk = document.getElementById('rand-size-chk'); const randSourceChk = document.getElementById('rand-source-chk'); const randDestChk = document.getElementById('rand-dest-chk');
     generateBtn.addEventListener('click', () => { const dirChk = document.getElementById('directed-chk')?.checked; const randDirChk = document.getElementById('rand-directed-chk')?.checked; let count = parseInt(nodeCountInput.value) || 10; if (randSizeChk && randSizeChk.checked) { count = Math.floor(Math.random() * 26) + 5; nodeCountInput.value = count; } randomGraph.clear(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `V${i}`; nodes.push(id); randomGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); randomGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `cE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } const extraEdges = count + Math.floor(count / 2); for (let i = 0; i < extraEdges; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !randomGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); randomGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `cE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyRandom.elements().remove(); window.cyRandom.add(elements); window.cyRandom.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); sourceSelect.innerHTML = ''; destSelect.innerHTML = '<option value="">-- All Nodes --</option>'; randomGraph.getVertices().forEach(v => { sourceSelect.add(new Option(v, v)); destSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('start-btn'); if (sBtn) sBtn.disabled = sourceSelect.options.length < 2; randomControls.reset(); document.getElementById('explanation-text').innerHTML = `Generated random graph.`; document.querySelector('#pq-state span').innerHTML = '(Empty)'; document.querySelector('#distances-state .distances-table-container').innerHTML = ''; });
@@ -645,14 +679,14 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cyCustom = cytoscape({ container: document.getElementById('cy-custom'), style: cyStyle, elements: [] });
     const customControls = configureVisualizerControls('custom-', window.cyCustom, customGraph);
     const customSourceSelect = document.getElementById('custom-source-node'); const customDestSelect = document.getElementById('custom-dest-node');
-    attachGraphEditorEvents('custom-', window.cyCustom, customGraph, () => { customSourceSelect.innerHTML = ''; customDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; customGraph.getVertices().forEach(v => { customSourceSelect.add(new Option(v, v)); customDestSelect.add(new Option(v, v)); }); document.getElementById('custom-start-btn').disabled = customSourceSelect.options.length < 2; });
+    attachGraphEditorEvents('custom-', window.cyCustom, customGraph, () => { customSourceSelect.innerHTML = ''; customDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; customGraph.getVertices().forEach(v => { customSourceSelect.add(new Option(v, v)); customDestSelect.add(new Option(v, v)); }); document.getElementById('custom-start-btn').disabled = customSourceSelect.options.length < 2; }, () => customControls.isRunning());
     document.getElementById('clear-custom-btn').addEventListener('click', () => { window.cyCustom.elements().remove(); customGraph.clear(); customSourceSelect.innerHTML = ''; customDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; document.getElementById('custom-start-btn').disabled = true; customControls.reset(); document.querySelector('#custom-distances-state .distances-table-container').innerHTML = ''; document.querySelector('#custom-pq-state span').innerHTML = '(Empty)'; });
 
     let animGraph = new Graph();
     window.cyAnim = cytoscape({ container: document.getElementById('cy-anim'), style: cyStyle, layout: { name: 'cose' } });
     const animControls = configureAnimationControls('anim-', window.cyAnim, animGraph);
     const animSourceSelect = document.getElementById('anim-source-node'); const animDestSelect = document.getElementById('anim-dest-node');
-    attachGraphEditorEvents('anim-', window.cyAnim, animGraph, () => { animSourceSelect.innerHTML = ''; animDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; animGraph.getVertices().forEach(v => { animSourceSelect.add(new Option(v, v)); animDestSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('anim-start-btn'); if (sBtn) sBtn.disabled = animSourceSelect.options.length < 2; });
+    attachGraphEditorEvents('anim-', window.cyAnim, animGraph, () => { animSourceSelect.innerHTML = ''; animDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; animGraph.getVertices().forEach(v => { animSourceSelect.add(new Option(v, v)); animDestSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('anim-start-btn'); if (sBtn) sBtn.disabled = animSourceSelect.options.length < 2; }, () => animControls.isRunning());
 
     const animGenerateBtn = document.getElementById('anim-generate-btn'); const animNodeCountInput = document.getElementById('anim-node-count'); const animRandSizeChk = document.getElementById('anim-rand-size-chk'); const animRandSourceChk = document.getElementById('anim-rand-source-chk'); const animRandDestChk = document.getElementById('anim-rand-dest-chk');
     animGenerateBtn.addEventListener('click', () => { const dirChk = document.getElementById('anim-directed-chk')?.checked; const randDirChk = document.getElementById('anim-rand-directed-chk')?.checked; let count = parseInt(animNodeCountInput.value) || 12; if (animRandSizeChk && animRandSizeChk.checked) { count = Math.floor(Math.random() * 26) + 5; animNodeCountInput.value = count; } animGraph.clear(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `V${i}`; nodes.push(id); animGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 99) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); animGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `cE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } const extraEdges = count + Math.floor(count / 2); for (let i = 0; i < extraEdges; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !animGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 99) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); animGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `cE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyAnim.elements().remove(); window.cyAnim.add(elements); window.cyAnim.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); animSourceSelect.innerHTML = ''; animDestSelect.innerHTML = '<option value="">-- All Nodes --</option>'; animGraph.getVertices().forEach(v => { animSourceSelect.add(new Option(v, v)); animDestSelect.add(new Option(v, v)); }); const sBtn = document.getElementById('anim-start-btn'); if (sBtn) sBtn.disabled = animSourceSelect.options.length < 2; animControls.reset(); document.getElementById('anim-explanation-text').innerHTML = `Generated test graph.`; document.querySelector('#anim-pq-state span').innerHTML = '(Empty)'; document.querySelector('#anim-distances-state .distances-table-container').innerHTML = ''; });
@@ -662,12 +696,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generateBtn.click(); animGenerateBtn.click();
 
-    let quizGraph = new Graph(); window.cyQuiz = cytoscape({ container: document.getElementById('cy-quiz'), style: cyStyle, layout: { name: 'cose' } }); const quizSourceSelect = document.getElementById('quiz-source-node'); let quizGenerator = null; let quizHistory = []; let quizPqSnapshot = []; let quizDistSnapshot = new Map(); let isWaitingForTap = false; let currentMinNode = null; let currentMinPriority = null;
-    document.getElementById('quiz-generate-btn').addEventListener('click', () => { const dirChk = document.getElementById('quiz-directed-chk')?.checked; const randDirChk = document.getElementById('quiz-rand-directed-chk')?.checked; const count = parseInt(document.getElementById('quiz-node-count').value) || 10; quizGraph.clear(); window.cyQuiz.elements().remove(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `Q${i}`; nodes.push(id); quizGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } for (let i = 0; i < count; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !quizGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyQuiz.add(elements); window.cyQuiz.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = false; document.getElementById('quiz-start-btn').disabled = false; document.getElementById('quiz-explanation-text').innerHTML = 'Graph generated.'; });
+    let quizGraph = new Graph(); window.cyQuiz = cytoscape({ container: document.getElementById('cy-quiz'), style: cyStyle, layout: { name: 'cose' } }); const quizSourceSelect = document.getElementById('quiz-source-node'); let quizGenerator = null; let quizHistory = []; let quizPqSnapshot = []; let quizDistSnapshot = new Map(); let quizVisitedSnapshot = new Set(); let isWaitingForTap = false; let currentMinNode = null; let currentMinPriority = null; let quizMistakes = 0;
+    attachGraphEditorEvents('quiz-', window.cyQuiz, quizGraph, () => { quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = quizSourceSelect.options.length === 0; document.getElementById('quiz-start-btn').disabled = quizSourceSelect.options.length < 2; }, () => quizGenerator !== null);
+    document.getElementById('quiz-generate-btn').addEventListener('click', () => { const dirChk = document.getElementById('quiz-directed-chk')?.checked; const randDirChk = document.getElementById('quiz-rand-directed-chk')?.checked; const count = parseInt(document.getElementById('quiz-node-count').value) || 10; quizGraph.clear(); window.cyQuiz.elements().remove(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `Q${i}`; nodes.push(id); quizGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } for (let i = 0; i < count; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !quizGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyQuiz.add(elements); window.cyQuiz.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = false; document.getElementById('quiz-start-btn').disabled = false; document.getElementById('quiz-start-over-btn').disabled = true; document.getElementById('quiz-explanation-text').innerHTML = 'Graph generated.'; });
     const quizUpdater = createVisualUpdater(window.cyQuiz, { expText: document.getElementById('quiz-explanation-text'), pqSpan: document.querySelector('#quiz-pq-state span'), distContainer: document.querySelector('#quiz-distances-state .distances-table-container') });
-    const stepQuiz = () => {
+    const stepQuiz = (userChoice) => {
         if (!quizGenerator) return;
-        let res = quizGenerator.next();
+        let res = quizGenerator.next(userChoice);
         while (!res.done) {
             const state = res.value;
             quizHistory.push(state);
@@ -682,9 +717,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentMinNode = state.currentNode;
                 quizPqSnapshot = state.pqState.map(i => ({ ...i }));
                 quizDistSnapshot = new Map(state.distances);
+                quizVisitedSnapshot = new Set(state.visitedSet);
                 window.cyQuiz.getElementById(currentMinNode).removeClass('current-node');
-                isWaitingForTap = true;
-                const nodeList = state.pqState.map(i => `<span style="font-family:monospace;background:#1e293b;padding:2px 5px;border-radius:3px;">${i.node}: <strong style="color:#f59e0b;">${i.priority}</strong></span>`).join(' ');
+                window.cyQuiz.getElementById(currentMinNode).addClass('in-queue');
+                isWaitingForTap = true;                const sortedPq = [{ node: state.currentNode, priority: state.priority }, ...state.pqState].sort((a, b) => a.priority - b.priority);
+                const nodeList = sortedPq.map(i => `<span style="background:#1e293b; padding:2px 6px; border-radius:4px; margin-right:4px;">${i.node}: <strong style="color:#f59e0b;">${i.priority}</strong></span>`).join('');
                 document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#3b82f6;">🎯 QUIZ:</strong> Which node should be extracted next (minimum distance)?<br><small style="color:#94a3b8;">Priority Queue: ${nodeList}</small>`;
                 document.querySelector('#quiz-pq-state span').innerHTML = '(Hidden — make your guess!)';
                 const heapContent = document.getElementById('floating-heap-content');
@@ -696,39 +733,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 isWaitingForTap = false;
                 document.getElementById('quiz-start-btn').disabled = false;
                 document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#10b981;">✅ Quiz Complete!</strong> ${state.message}`;
+                document.getElementById('quiz-lives').classList.add('hidden');
                 return;
             }
 
             res = quizGenerator.next();
         }
     };
-    document.getElementById('quiz-start-btn').addEventListener('click', () => { const source = quizSourceSelect.value; if (!source) return; window.cyQuiz.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node'); window.cyQuiz.getElementById(source).addClass('source'); quizGenerator = runDijkstraStepByStep(quizGraph, source, null); quizHistory = []; quizPqSnapshot = []; quizDistSnapshot = new Map(); isWaitingForTap = false; document.getElementById('quiz-start-btn').disabled = true; stepQuiz(); });
+    document.getElementById('quiz-start-btn').addEventListener('click', () => { const source = quizSourceSelect.value; if (!source) return; document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click()); window.cyQuiz.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node'); window.cyQuiz.getElementById(source).addClass('source'); quizGenerator = runDijkstraStepByStep(quizGraph, source, null); quizHistory = []; quizPqSnapshot = []; quizDistSnapshot = new Map(); quizVisitedSnapshot = new Set(); isWaitingForTap = false; quizMistakes = 0; document.querySelectorAll('.quiz-heart').forEach(h => h.innerText = '❤️'); document.getElementById('quiz-lives').classList.remove('hidden'); document.getElementById('quiz-start-btn').disabled = true; document.getElementById('quiz-start-over-btn').disabled = false; stepQuiz(); });
     window.cyQuiz.on('tap', 'node', (e) => {
         if (!isWaitingForTap || !quizGenerator) return;
+        if (window.currentToolMode !== 'pointer') return; // Ignore taps during graph editing
         const target = e.target;
         const tappedId = target.id();
         const tappedDist = quizDistSnapshot.get(tappedId);
-        const inHeap = quizPqSnapshot.some(i => i.node === tappedId);
-        if (inHeap && tappedDist === currentMinPriority) {
+        const isFinalized = quizVisitedSnapshot.has(tappedId);
+        const hasMinDist = tappedDist !== undefined && tappedDist !== Infinity && tappedDist === currentMinPriority;
+        if (!isFinalized && hasMinDist) {
             target.addClass('glow-success');
             setTimeout(() => target.removeClass('glow-success'), 1000);
             isWaitingForTap = false;
-            stepQuiz();
+            stepQuiz(tappedId);
         } else {
             target.addClass('glow-fail');
             setTimeout(() => target.removeClass('glow-fail'), 1000);
-            const tappedDistStr = tappedDist === Infinity ? '∞' : tappedDist;
-            let message;
-            if (!inHeap) {
-                message = `❌ Incorrect! Node <strong>${tappedId}</strong> is not in the Priority Queue (it may already be finalized or unreachable).`;
+            quizMistakes++;
+            const heartEl = document.getElementById(`heart-${quizMistakes}`);
+            if (heartEl) heartEl.innerText = '💔';
+            
+            if (quizMistakes >= 3) {
+                isWaitingForTap = false;
+                document.getElementById('quiz-gameover-modal').classList.remove('hidden');
             } else {
-                message = `❌ Incorrect! Node <strong>${tappedId}</strong> has distance <strong>${tappedDistStr}</strong>, but the minimum is <strong>${currentMinPriority}</strong>. Look for the node with the smallest distance in the queue.`;
+                document.getElementById('quiz-error-details').innerHTML = `❌ Incorrect choice! That is not the unvisited node with the minimum distance. Look carefully and try again.`;
+                document.getElementById('quiz-error-modal').classList.remove('hidden');
             }
-            document.getElementById('quiz-error-details').innerHTML = message;
-            document.getElementById('quiz-error-modal').classList.remove('hidden');
         }
     });
+    const quizStartOverBtn = document.getElementById('quiz-start-over-btn'); if (quizStartOverBtn) quizStartOverBtn.addEventListener('click', () => { const qBtn = document.getElementById('quiz-start-btn'); if (qBtn) { qBtn.disabled = false; qBtn.click(); } });
     const quizCloseBtn = document.getElementById('quiz-error-close-btn'); if (quizCloseBtn) quizCloseBtn.addEventListener('click', () => { document.getElementById('quiz-error-modal').classList.add('hidden'); });
+    const quizGoverLearnBtn = document.getElementById('quiz-gameover-learn-btn'); if (quizGoverLearnBtn) quizGoverLearnBtn.addEventListener('click', () => { document.getElementById('quiz-gameover-modal').classList.add('hidden'); document.querySelector('.nav-btn[data-target="page-learn"]').click(); });
+    const quizGoverRetryBtn = document.getElementById('quiz-gameover-retry-btn'); if (quizGoverRetryBtn) quizGoverRetryBtn.addEventListener('click', () => { 
+        document.getElementById('quiz-gameover-modal').classList.add('hidden'); 
+        const qBtn = document.getElementById('quiz-start-btn'); 
+        if (qBtn) { 
+            qBtn.disabled = false; 
+            qBtn.click(); 
+        } 
+    });
+    const readMoreBtn = document.getElementById('learn-read-more-btn'); if (readMoreBtn) readMoreBtn.addEventListener('click', () => { document.getElementById('learn-extended').classList.remove('hidden'); readMoreBtn.style.display = 'none'; });
 
     const directedChk = document.getElementById('directed-chk');
     if (directedChk) directedChk.addEventListener('change', e => { if (window.cyRandom && randomGraph.getVertices().length) applyDirectedToggle(window.cyRandom, randomGraph, e.target.checked); });
@@ -747,3 +800,4 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     syncCheckboxes();
 });
+
