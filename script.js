@@ -816,12 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const readMoreBtn = document.getElementById('learn-read-more-btn'); if (readMoreBtn) readMoreBtn.addEventListener('click', () => { document.getElementById('learn-extended').classList.remove('hidden'); readMoreBtn.style.display = 'none'; });
 
-    const directedChk = document.getElementById('directed-chk');
-    if (directedChk) directedChk.addEventListener('change', e => { if (window.cyRandom && randomGraph.getVertices().length) applyDirectedToggle(window.cyRandom, randomGraph, e.target.checked); });
-    const customDirChk = document.getElementById('custom-directed-chk');
-    if (customDirChk) customDirChk.addEventListener('change', e => { if (window.cyCustom && customGraph.getVertices().length) applyDirectedToggle(window.cyCustom, customGraph, e.target.checked); });
-    const animDirChk = document.getElementById('anim-directed-chk');
-    if (animDirChk) animDirChk.addEventListener('change', e => { if (window.cyAnim && animGraph.getVertices().length) applyDirectedToggle(window.cyAnim, animGraph, e.target.checked); });
+
 
     const syncCheckboxes = () => {
         if (randSizeChk) nodeCountInput.disabled = randSizeChk.checked;
