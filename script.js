@@ -371,18 +371,19 @@ function attachGraphEditorEvents(prefix, cyInstance, internalGraphObj, dropdownU
                     let weightStr = await openWeightModal("1");
                     if (weightStr !== null) {
                         const weight = parseInt(weightStr);
-                        const allowNeg = document.getElementById('allow-negative-chk')?.checked || document.getElementById('custom-allow-negative-chk')?.checked || document.getElementById('anim-allow-negative-chk')?.checked;
 
                         if (!isNaN(weight)) {
-                            if (weight < 0 && !allowNeg) {
-                                showError("Disabled! Enable Negative Edges via the checkboxes to allow mathematically dangerous graphs.");
+                            if (weight < 0) {
+                                showError("Invalid weight: Dijkstra's algorithm requires non-negative edge weights. Negative edges are not permitted.");
+                            } else if (weight === 0) {
+                                showError("Invalid weight: Edge weights must be positive integers.");
                             } else {
                                 const isDirected = document.getElementById(`${prefix}directed-chk`)?.checked || false;
                                 cyInstance.add({ data: { id: `cE${Date.now()}E${localEdgeCounter++}`, source, target: dest, weight }, classes: isDirected ? 'directed' : '' });
                                 rebuildInternalGraph(cyInstance, internalGraphObj);
                             }
                         } else {
-                            showError("Failed: Invalid weight! Must be an integer.");
+                            showError("Invalid weight: Must be a positive integer.");
                         }
                     }
                 }
@@ -392,17 +393,18 @@ function attachGraphEditorEvents(prefix, cyInstance, internalGraphObj, dropdownU
             let weightStr = await openWeightModal(target.data('weight'));
             if (weightStr !== null) {
                 const weight = parseInt(weightStr);
-                const allowNeg = document.getElementById('allow-negative-chk')?.checked || document.getElementById('custom-allow-negative-chk')?.checked || document.getElementById('anim-allow-negative-chk')?.checked;
 
                 if (!isNaN(weight)) {
-                    if (weight < 0 && !allowNeg) {
-                        showError("Disabled! Enable Negative Edges via the checkboxes to allow mathematically dangerous graphs.");
+                    if (weight < 0) {
+                        showError("Invalid weight: Dijkstra's algorithm requires non-negative edge weights.");
+                    } else if (weight === 0) {
+                        showError("Invalid weight: Edge weights must be positive integers.");
                     } else {
                         target.data('weight', weight);
                         rebuildInternalGraph(cyInstance, internalGraphObj);
                     }
                 } else {
-                    showError("Invalid weight.");
+                    showError("Invalid weight: Must be a positive integer.");
                 }
             }
         }
@@ -446,7 +448,7 @@ function configureVisualizerControls(prefix, cyInstance, internalGraphObj) {
             generator = null; history = []; historyIdx = -1;
             cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
             cyInstance.edges().removeStyle('label'); cyInstance.edges().removeStyle('font-size'); cyInstance.edges().removeStyle('font-weight'); cyInstance.edges().removeStyle('color'); cyInstance.edges().removeStyle('text-background-opacity');
-            expText.innerHTML = `Welcome! Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
+            expText.innerHTML = `System initialized. Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
             const fTable = document.getElementById('floating-table-content'); if (fTable) fTable.innerHTML = '';
             const fHeap = document.getElementById('floating-heap-content'); if (fHeap) fHeap.innerHTML = '';
             startBtn.disabled = false; sourceSelect.disabled = false; destSelect.disabled = false;
@@ -533,7 +535,7 @@ function configureAnimationControls(prefix, cyInstance, internalGraphObj) {
             generator = null; history = []; historyIdx = -1;
             cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
             cyInstance.edges().removeStyle('label'); cyInstance.edges().removeStyle('font-size'); cyInstance.edges().removeStyle('font-weight'); cyInstance.edges().removeStyle('color'); cyInstance.edges().removeStyle('text-background-opacity');
-            expText.innerHTML = `Welcome! Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
+            expText.innerHTML = `System initialized. Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
             const fTable = document.getElementById('floating-table-content'); if (fTable) fTable.innerHTML = '';
             const fHeap = document.getElementById('floating-heap-content'); if (fHeap) fHeap.innerHTML = '';
             startBtn.disabled = false; sourceSelect.disabled = false; destSelect.disabled = false;
@@ -548,7 +550,7 @@ function configureAnimationControls(prefix, cyInstance, internalGraphObj) {
             document.querySelectorAll('.tool-btn[data-mode="pointer"]').forEach(btn => btn.click());
             cyInstance.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
             cyInstance.edges().removeStyle('label'); cyInstance.edges().removeStyle('font-size'); cyInstance.edges().removeStyle('font-weight'); cyInstance.edges().removeStyle('color'); cyInstance.edges().removeStyle('text-background-opacity');
-            expText.innerHTML = `Welcome! Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
+            expText.innerHTML = `System initialized. Graph ready.`; pqSpan.innerHTML = '<span style="color:#64748b;">(Empty)</span>'; distContainer.innerHTML = '';
             const fTable = document.getElementById('floating-table-content'); if (fTable) fTable.innerHTML = '';
             const fHeap = document.getElementById('floating-heap-content'); if (fHeap) fHeap.innerHTML = '';
             startBtn.disabled = false; sourceSelect.disabled = false; destSelect.disabled = false;
@@ -698,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let quizGraph = new Graph(); window.cyQuiz = cytoscape({ container: document.getElementById('cy-quiz'), style: cyStyle, layout: { name: 'cose' } }); const quizSourceSelect = document.getElementById('quiz-source-node'); let quizGenerator = null; let quizHistory = []; let quizPqSnapshot = []; let quizDistSnapshot = new Map(); let quizVisitedSnapshot = new Set(); let isWaitingForTap = false; let currentMinNode = null; let currentMinPriority = null; let quizMistakes = 0;
     attachGraphEditorEvents('quiz-', window.cyQuiz, quizGraph, () => { quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = quizSourceSelect.options.length === 0; document.getElementById('quiz-start-btn').disabled = quizSourceSelect.options.length < 2; }, () => quizGenerator !== null);
-    document.getElementById('quiz-generate-btn').addEventListener('click', () => { const dirChk = document.getElementById('quiz-directed-chk')?.checked; const randDirChk = document.getElementById('quiz-rand-directed-chk')?.checked; const count = parseInt(document.getElementById('quiz-node-count').value) || 10; quizGraph.clear(); window.cyQuiz.elements().remove(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `Q${i}`; nodes.push(id); quizGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } for (let i = 0; i < count; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !quizGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyQuiz.add(elements); window.cyQuiz.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = false; document.getElementById('quiz-start-btn').disabled = false; document.getElementById('quiz-start-over-btn').disabled = true; document.getElementById('quiz-explanation-text').innerHTML = 'Graph generated.'; });
+    document.getElementById('quiz-generate-btn').addEventListener('click', () => { const dirChk = document.getElementById('quiz-directed-chk')?.checked; const randDirChk = document.getElementById('quiz-rand-directed-chk')?.checked; const count = parseInt(document.getElementById('quiz-node-count').value) || 10; quizGraph.clear(); window.cyQuiz.elements().remove(); const elements = []; const nodes = []; for (let i = 0; i < count; i++) { const id = `Q${i}`; nodes.push(id); quizGraph.addVertex(id); elements.push({ data: { id, label: id } }); } let edgeCount = 0; for (let i = 1; i < count; i++) { const target = nodes[i]; const source = nodes[Math.floor(Math.random() * i)]; const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(source, target, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source, target, weight }, classes: isDir ? 'directed' : '' }); } for (let i = 0; i < count; i++) { const src = nodes[Math.floor(Math.random() * count)]; const tgt = nodes[Math.floor(Math.random() * count)]; if (src !== tgt && !quizGraph.getNeighbors(src).some(n => n.node === tgt)) { const weight = Math.floor(Math.random() * 20) + 1; const isDir = dirChk || (randDirChk && Math.random() > 0.5); quizGraph.addEdge(src, tgt, weight, isDir); elements.push({ data: { id: `qE${edgeCount++}`, source: src, target: tgt, weight }, classes: isDir ? 'directed' : '' }); } } window.cyQuiz.add(elements); window.cyQuiz.layout({ name: 'cose', padding: 50, nodeRepulsion: 400000, idealEdgeLength: 100, edgeElasticity: 100 }).run(); quizSourceSelect.innerHTML = ''; quizGraph.getVertices().forEach(v => quizSourceSelect.add(new Option(v, v))); quizSourceSelect.disabled = false; document.getElementById('quiz-start-btn').disabled = false; document.getElementById('quiz-start-over-btn').disabled = true; const _qEB = document.getElementById('quiz-edit-btn'); if (_qEB) { _qEB.disabled = false; _qEB.innerHTML = '\u270e Edit Graph'; _qEB.classList.remove('quiz-save-active'); } document.getElementById('quiz-explanation-text').innerHTML = 'Graph generated. Ready to begin evaluation.'; });
     const quizUpdater = createVisualUpdater(window.cyQuiz, { expText: document.getElementById('quiz-explanation-text'), pqSpan: document.querySelector('#quiz-pq-state span'), distContainer: document.querySelector('#quiz-distances-state .distances-table-container') });
     const stepQuiz = (userChoice) => {
         if (!quizGenerator) return;
@@ -722,8 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.cyQuiz.getElementById(currentMinNode).addClass('in-queue');
                 isWaitingForTap = true;                const sortedPq = [{ node: state.currentNode, priority: state.priority }, ...state.pqState].sort((a, b) => a.priority - b.priority);
                 const nodeList = sortedPq.map(i => `<span style="background:#1e293b; padding:2px 6px; border-radius:4px; margin-right:4px;">${i.node}: <strong style="color:#f59e0b;">${i.priority}</strong></span>`).join('');
-                document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#3b82f6;">🎯 QUIZ:</strong> Which node should be extracted next (minimum distance)?<br><small style="color:#94a3b8;">Priority Queue: ${nodeList}</small>`;
-                document.querySelector('#quiz-pq-state span').innerHTML = '(Hidden — make your guess!)';
+                document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#3b82f6;">EVALUATION:</strong> Which node should be extracted next (minimum distance)?<br><small style="color:#94a3b8;">Priority Queue: ${nodeList}</small>`;
+                document.querySelector('#quiz-pq-state span').innerHTML = '(Queue state abstracted during evaluation)';
                 const heapContent = document.getElementById('floating-heap-content');
                 if (heapContent) heapContent.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b;">(Hidden during quiz)</div>';
                 return;
@@ -732,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.type === 'DONE' || state.type === 'PATH_FOUND') {
                 isWaitingForTap = false;
                 document.getElementById('quiz-start-btn').disabled = false;
-                document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#10b981;">✅ Quiz Complete!</strong> ${state.message}`;
+                document.getElementById('quiz-explanation-text').innerHTML = `<strong style="color:#10b981;">Evaluation Complete.</strong> ${state.message}`;
                 document.getElementById('quiz-lives').classList.add('hidden');
                 return;
             }
@@ -759,18 +761,49 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => target.removeClass('glow-fail'), 1000);
             quizMistakes++;
             const heartEl = document.getElementById(`heart-${quizMistakes}`);
-            if (heartEl) heartEl.innerText = '💔';
+            if (heartEl) { heartEl.innerText = 'Lost'; heartEl.style.textDecoration = 'line-through'; heartEl.style.color = '#ef4444'; }
             
             if (quizMistakes >= 3) {
                 isWaitingForTap = false;
                 document.getElementById('quiz-gameover-modal').classList.remove('hidden');
             } else {
-                document.getElementById('quiz-error-details').innerHTML = `❌ Incorrect choice! That is not the unvisited node with the minimum distance. Look carefully and try again.`;
+                document.getElementById('quiz-error-details').innerHTML = `Invalid transition. Select the boundary node with the currently established minimum distance.`;
                 document.getElementById('quiz-error-modal').classList.remove('hidden');
             }
         }
     });
     const quizStartOverBtn = document.getElementById('quiz-start-over-btn'); if (quizStartOverBtn) quizStartOverBtn.addEventListener('click', () => { const qBtn = document.getElementById('quiz-start-btn'); if (qBtn) { qBtn.disabled = false; qBtn.click(); } });
+
+    // Quiz Edit/Save mode
+    let quizEditMode = false;
+    const quizEditBtn = document.getElementById('quiz-edit-btn');
+    if (quizEditBtn) {
+        quizEditBtn.addEventListener('click', () => {
+            if (!quizEditMode) {
+                // Enter edit mode: reset quiz state, allow editing
+                quizEditMode = true;
+                quizGenerator = null;
+                isWaitingForTap = false;
+                quizHistory = [];
+                window.cyQuiz.elements().removeClass('source target visited current path-edge eval-edge tree-edge dimmed dynamic-tree-edge finalized in-queue current-node');
+                document.getElementById('quiz-start-btn').disabled = true;
+                document.getElementById('quiz-start-over-btn').disabled = true;
+                document.getElementById('quiz-lives').classList.add('hidden');
+                document.getElementById('quiz-explanation-text').innerHTML = '<strong style="color:#2563eb;">Edit Mode</strong> — Add or remove nodes/edges, then click Save to apply.';
+                quizEditBtn.innerHTML = '&#10003; Save Graph';
+                quizEditBtn.classList.add('quiz-save-active');
+            } else {
+                // Exit edit mode: commit the graph
+                quizEditMode = false;
+                quizEditBtn.innerHTML = '&#9998; Edit Graph';
+                quizEditBtn.classList.remove('quiz-save-active');
+                const srcVal = document.getElementById('quiz-source-node').value;
+                document.getElementById('quiz-start-btn').disabled = !srcVal;
+                document.getElementById('quiz-start-over-btn').disabled = !srcVal;
+                document.getElementById('quiz-explanation-text').innerHTML = 'Graph saved. Select source node and begin evaluation.';
+            }
+        });
+    }
     const quizCloseBtn = document.getElementById('quiz-error-close-btn'); if (quizCloseBtn) quizCloseBtn.addEventListener('click', () => { document.getElementById('quiz-error-modal').classList.add('hidden'); });
     const quizGoverLearnBtn = document.getElementById('quiz-gameover-learn-btn'); if (quizGoverLearnBtn) quizGoverLearnBtn.addEventListener('click', () => { document.getElementById('quiz-gameover-modal').classList.add('hidden'); document.querySelector('.nav-btn[data-target="page-learn"]').click(); });
     const quizGoverRetryBtn = document.getElementById('quiz-gameover-retry-btn'); if (quizGoverRetryBtn) quizGoverRetryBtn.addEventListener('click', () => { 

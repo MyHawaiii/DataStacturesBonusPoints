@@ -11,9 +11,12 @@
 
 <body>
     <nav class="top-nav">
-        <div class="nav-brand">Dijkstra Viz</div>
+        <div style="display: flex; align-items: center; gap: 15px; margin-right: 30px;">
+            <button class="nav-btn active" data-target="page-home" title="Home Menu" style="font-size: 0.95rem; padding: 4px 12px; display:flex; align-items:center; justify-content:center;">Home</button>
+            <div class="nav-brand" style="margin-right: 0;">Dijkstra Viz</div>
+        </div>
         <div class="nav-links">
-            <button class="nav-btn active" data-target="page-custom">Build Custom Graph</button>
+            <button class="nav-btn" data-target="page-custom">Build Custom Graph</button>
             <button class="nav-btn" data-target="page-random">Random Graph</button>
             <button class="nav-btn" data-target="page-animate">Animation Player</button>
             <button class="nav-btn" data-target="page-quiz">Quiz Mode</button>
@@ -109,18 +112,48 @@
 
     <div id="quiz-gameover-modal" class="modal hidden">
         <div class="modal-content" style="width: 500px; text-align: center;">
-            <div style="font-size: 3rem; margin-bottom: 8px;">💔</div>
-            <h3 style="color: #ef4444; font-size: 1.5rem;">Quiz Over!</h3>
-            <p style="color: #cbd5e1; margin: 14px 0; line-height: 1.6;">You made 3 mistakes. Review the algorithm first, then come back and try again!</p>
+            <h3 style="color: #111827; font-size: 1.5rem;">Evaluation Concluded</h3>
+            <p style="color: #4b5563; margin: 14px 0; line-height: 1.6;">Maximum error threshold reached. Please review the algorithmic methodology.</p>
             <div class="modal-actions" style="justify-content: center; gap: 12px;">
-                <button id="quiz-gameover-learn-btn" class="modal-btn primary-btn">📚 Learn Algorithm</button>
-                <button id="quiz-gameover-retry-btn" class="modal-btn secondary-btn">↺ Try Again</button>
+                <button id="quiz-gameover-learn-btn" class="modal-btn primary-btn">Learn Algorithm</button>
+                <button id="quiz-gameover-retry-btn" class="modal-btn secondary-btn">Try Again</button>
             </div>
         </div>
     </div>
 
     <div class="pages-wrapper">
-        <div id="page-custom" class="page active-page">
+        <div id="page-home" class="page active-page">
+            <div class="home-container">
+                <div class="home-hero">
+                    <h1>Dijkstra's Algorithm Visualizer</h1>
+                    <p>An interactive academic tool for exploring pathfinding workflows and minimum priority queue behaviors.</p>
+                </div>
+                <div class="home-grid">
+                    <div class="home-card" data-tag="Interactive" onclick="document.querySelector('.nav-btn[data-target=\'page-custom\']').click()">
+                        <h3>Build Custom Graph</h3>
+                        <p>Draw custom graph topologies and verify stepwise algorithmic pathfinding solutions.</p>
+                    </div>
+                    <div class="home-card" data-tag="Exploration" onclick="document.querySelector('.nav-btn[data-target=\'page-random\']').click()">
+                        <h3>Random Graph</h3>
+                        <p>Generate random graphs to explore algorithm behavior under varying node densities.</p>
+                    </div>
+                    <div class="home-card" data-tag="Visualization" onclick="document.querySelector('.nav-btn[data-target=\'page-animate\']').click()">
+                        <h3>Animation Player</h3>
+                        <p>Observe the algorithm autonomously finding the shortest paths with visual highlighting.</p>
+                    </div>
+                    <div class="home-card" data-tag="Assessment" onclick="document.querySelector('.nav-btn[data-target=\'page-quiz\']').click()">
+                        <h3>Quiz Mode</h3>
+                        <p>Test theoretical understanding. Select the optimal extracted node at each algorithm step.</p>
+                    </div>
+                    <div class="home-card" data-tag="Theory" onclick="document.querySelector('.nav-btn[data-target=\'page-learn\']').click()">
+                        <h3>Methodology Overview</h3>
+                        <p>Read academic literature on Dijkstra's Algorithm and the usage of O(log V) Min-Heaps.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-custom" class="page">
             <div class="app-container">
                 <aside class="sidebar">
                     <header>
@@ -148,17 +181,12 @@
                                 Show Dynamic Colors
                             </label>
                             <label
-                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444; margin-top: 5px;">
-                                <input type="checkbox" id="custom-allow-negative-chk">
-                                Enable Negative Edges
-                            </label>
-                            <label
                                 style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
                                 <input type="checkbox" id="custom-directed-chk">
                                 Directed Graph
                             </label>
                         </div>
-                        <div class="control-group action-buttons">
+                        <div class="control-group action-buttons button-group-academic">
                             <button id="custom-start-btn" disabled>Start Algorithm</button>
                             <button id="custom-prev-btn" disabled>Previous Step</button>
                             <button id="custom-next-btn" disabled>Next Step</button>
@@ -168,7 +196,7 @@
                     </section>
                     <section class="explanation-panel">
                         <h3>Algorithm State</h3>
-                        <div id="custom-explanation-text">Welcome! Tap the canvas to build your custom graph.</div>
+                        <div id="custom-explanation-text">System steady. Ready for custom edge inputs.</div>
                         <div id="custom-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
                                 style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
                         <div id="custom-distances-state" style="margin-top: 15px; overflow-x: auto;">
@@ -298,10 +326,6 @@
                                 style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600;"><input
                                     type="checkbox" id="show-colors-chk" checked>Show Dynamic Colors</label>
                             <label
-                                style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444; margin-top: 5px;">
-                                <input type="checkbox" id="allow-negative-chk"> Enable Negative Edges
-                            </label>
-                            <label
                                 style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
                                 <input type="checkbox" id="directed-chk"> Directed Graph
                             </label>
@@ -310,7 +334,7 @@
                                 <input type="checkbox" id="rand-directed-chk"> Random Directed Graph
                             </label>
                         </div>
-                        <div class="control-group action-buttons">
+                        <div class="control-group action-buttons button-group-academic">
                             <button id="start-btn" disabled>Start Algorithm</button>
                             <button id="prev-btn" disabled>Previous Step</button>
                             <button id="next-btn" disabled>Next Step</button>
@@ -320,7 +344,7 @@
                     </section>
                     <section class="explanation-panel">
                         <h3>Algorithm State</h3>
-                        <div id="explanation-text">Welcome! Generate a graph to begin.</div>
+                        <div id="explanation-text">System steady. Waiting for generation parameters.</div>
                         <div id="pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
                                 style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
                         <div id="distances-state" style="margin-top: 15px; overflow-x: auto;">
@@ -455,10 +479,6 @@
                             </div>
                             <div class="control-group toggle-group" style="margin-top: 5px; margin-bottom: 5px;">
                                 <label
-                                    style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; color: #ef4444;">
-                                    <input type="checkbox" id="anim-allow-negative-chk"> Enable Negative Edges
-                                </label>
-                                <label
                                     style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; font-weight:600; margin-top: 5px;">
                                     <input type="checkbox" id="anim-directed-chk"> Directed Graph
                                 </label>
@@ -467,8 +487,8 @@
                                     <input type="checkbox" id="anim-rand-directed-chk"> Random Directed Graph
                                 </label>
                             </div>
-                            <div class="control-group action-buttons" style="margin-top: 15px;">
-                                <button id="anim-start-btn" disabled>Lock &amp; Load Algorithm</button>
+                            <div class="control-group action-buttons button-group-academic" style="margin-top: 15px;">
+                                <button id="anim-start-btn" disabled>Initialize Sequence</button>
                             </div>
                         </section>
                     </div>
@@ -482,16 +502,14 @@
                             </div>
                             <div class="control-group action-buttons"
                                 style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-                                <button id="anim-play-back-btn" class="secondary-btn" disabled>&#9664;&#9664; Auto
-                                    Rewind</button>
-                                <button id="anim-play-fwd-btn" class="secondary-btn" disabled>Auto Play
-                                    &#9654;&#9654;</button>
+                                <button id="anim-play-back-btn" class="secondary-btn" disabled>Rewind Simulation</button>
+                                <button id="anim-play-fwd-btn" class="secondary-btn" disabled>Play Simulation</button>
                                 <button id="anim-pause-btn" disabled
                                     style="grid-column: span 2; background-color: #f59e0b;">&#10074;&#10074;
                                     Pause</button>
                             </div>
                             <hr style="margin: 15px 0; border: 0; border-top: 1px solid var(--border-color);">
-                            <div class="control-group action-buttons">
+                            <div class="control-group action-buttons button-group-academic">
                                 <button id="anim-prev-btn" disabled>Manual Prev Step</button>
                                 <button id="anim-next-btn" disabled>Manual Next Step</button>
                                 <button id="anim-start-over-btn" disabled>Start Over</button>
@@ -507,7 +525,7 @@
 
                     <section class="explanation-panel" style="margin-top: 20px;">
                         <h3>Algorithm State</h3>
-                        <div id="anim-explanation-text">Generate graph and click Lock &amp; Load to start playing.</div>
+                        <div id="anim-explanation-text">Parameterization required to begin sequence.</div>
                         <div id="anim-pq-state" style="margin-top: 15px;"><strong>Priority Queue:</strong> <span
                                 style="display:block; margin-top:5px; color:#64748b;">(Empty)</span></div>
                         <div id="anim-distances-state" style="margin-top: 15px; overflow-x: auto;">
@@ -631,9 +649,10 @@
                             <label for="quiz-source-node">Source Node:</label>
                             <select id="quiz-source-node" disabled></select>
                         </div>
-                        <div class="control-group action-buttons" style="margin-top: 15px;">
-                            <button id="quiz-start-btn" disabled>Start Quiz!</button>
-                            <button id="quiz-start-over-btn" disabled class="secondary-btn" style="margin-top: 5px;">Start Over</button>
+                        <div class="control-group action-buttons button-group-academic" style="margin-top: 15px;">
+                            <button id="quiz-start-btn" disabled>▶ Begin Evaluation</button>
+                            <button id="quiz-start-over-btn" disabled class="secondary-btn" style="margin-top: 5px;">↺ Start Over</button>
+                            <button id="quiz-edit-btn" disabled class="quiz-edit-btn" style="margin-top: 5px;">✎ Edit Graph</button>
                         </div>
                     </section>
                     <section class="explanation-panel" style="margin-top: 20px;">
@@ -650,9 +669,9 @@
                 <main class="graph-container">
                     <div id="math-status-bar-quiz" class="math-status-bar hidden"></div>
                     <div id="quiz-lives" class="quiz-lives hidden">
-                        <span id="heart-1" class="quiz-heart">❤️</span>
-                        <span id="heart-2" class="quiz-heart">❤️</span>
-                        <span id="heart-3" class="quiz-heart">❤️</span>
+                        <span id="heart-1" class="quiz-heart">Life 1</span>
+                        <span id="heart-2" class="quiz-heart">Life 2</span>
+                        <span id="heart-3" class="quiz-heart">Life 3</span>
                     </div>
                     <div class="graph-legend">
                         <div class="legend-item"><span class="legend-color legend-unvisited"></span>Unvisited</div>
