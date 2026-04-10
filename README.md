@@ -10,11 +10,13 @@ https://myhawaiii.github.io/DataStacturesBonusPoints/
 
 ** Stochastic Graph Generation: Includes an automated feature to generate random, complex graph structures to observe algorithmic behavior across diverse datasets.
 
+** Animation Player: Animate the algorithm to watch it continuously and understand it better.
+
 ** Interactive Knowledge Assessment (Quiz Mode): A gamified evaluation module designed to test the user's understanding of the algorithm's step-by-step logic, featuring a "three-life" health system to encourage precision.
 
 ** Comprehensive Pedagogical Resources: Integrated educational materials, including video tutorials and detailed breakdowns of the underlying Min-Heap data structures and computational complexity.
 
-## 💻 Technologies Used
+## Technologies Used
 ** Frontend Architecture: HTML5 & CSS3 (Modern Responsive Design).
 
 ** Logic & Implementation: JavaScript (ES6+) utilizing asynchronous programming for real-time animation control.
