@@ -177,7 +177,7 @@ body {
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 30px;
+    padding: 20px;
     z-index: 10;
     overflow-y: auto;
 }
@@ -520,12 +520,11 @@ label {
 }
 
 input:not([type="range"]),
-select,
-button {
+select {
     padding: 5px 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
 }
 
 input[type="range"] {
@@ -541,7 +540,7 @@ button {
     cursor: pointer;
     transition: background-color 0.15s, box-shadow 0.15s;
     border: none;
-    padding: 6px 11px;
+    padding: 7px 12px;
     border-radius: 4px;
     letter-spacing: 0.01em;
     font-size: 0.82rem;
@@ -626,13 +625,14 @@ button:disabled {
 
 .explanation-panel {
     flex: 1;
+    min-height: 180px;
     background-color: var(--bg-color);
     border-radius: 8px;
     padding: 15px;
     border: 1px solid var(--border-color);
     overflow-y: auto;
-    font-size: 0.95rem;
-    line-height: 1.5;
+    font-size: 0.9rem;
+    line-height: 1.55;
     transition: all 0.3s ease;
 }
 
@@ -834,26 +834,28 @@ button:disabled {
 
 .math-status-bar {
     position: absolute;
-    top: 10px;
+    top: 12px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(30, 41, 59, 0.85);
+    background: rgba(15, 23, 42, 0.92);
     color: #f8fafc;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 1.1rem;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 0.95rem;
     font-weight: 600;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
     z-index: 500;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
     transition: opacity 0.3s;
     pointer-events: none;
     text-align: center;
-    border: 1px solid #475569;
+    border: 1px solid #334155;
+    white-space: nowrap;
 }
 
 .math-status-bar.hidden {
     opacity: 0;
+    pointer-events: none;
 }
 
 .floating-code {
@@ -1076,7 +1078,7 @@ button {
     cursor: pointer;
     transition: background-color 0.2s;
     border: none;
-    padding: 10px;
+    padding: 7px 12px;
     border-radius: 4px;
 }
 
@@ -1260,7 +1262,7 @@ body {
 /* Algorithm State heading */
 .explanation-panel h3 {
     color: var(--accent);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
 }
 
 /* ================================
@@ -1322,11 +1324,9 @@ button:disabled {
    MATH STATUS BAR
 ================================ */
 .math-status-bar {
-    font-size: 0.82rem;
     font-family: 'Inter', monospace;
     letter-spacing: 0.01em;
-    border-bottom: 2px solid var(--border-color);
-    background: #fafafa;
+    /* Overrides removed — the dark pill style at line ~835 is canonical */
 }
 
 /* ================================
